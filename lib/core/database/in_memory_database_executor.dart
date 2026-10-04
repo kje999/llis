@@ -72,7 +72,16 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
         if (valA == null) return isDesc ? 1 : -1;
         if (valB == null) return isDesc ? -1 : 1;
         final comp = Comparable.compare(valA as Comparable, valB as Comparable);
-        return isDesc ? -comp : comp;
+        if (comp != 0) {
+          return isDesc ? -comp : comp;
+        }
+        // Tie-breaker: sort by lotto_type_id ASC so Ultra 6/58, Grand 6/55, Super 6/49 display consistently
+        final typeA = a['lotto_type_id'];
+        final typeB = b['lotto_type_id'];
+        if (typeA is Comparable && typeB is Comparable) {
+          return Comparable.compare(typeA, typeB);
+        }
+        return 0;
       });
     }
 
@@ -83,10 +92,11 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
     final limitMatch = RegExp(r'LIMIT\s+(\?|\d+)(?:\s+OFFSET\s+(\?|\d+))?', caseSensitive: false).firstMatch(cleanSql);
     if (limitMatch != null) {
       final limitToken = limitMatch.group(1)!;
+      int limitParamIdx = -1;
       if (limitToken == '?') {
-        final paramIdx = RegExp(r'\?').allMatches(cleanSql.substring(0, limitMatch.start)).length;
-        if (paramIdx < parameters.length) {
-          limit = parameters[paramIdx] as int?;
+        limitParamIdx = RegExp(r'\?').allMatches(cleanSql.substring(0, limitMatch.start)).length;
+        if (limitParamIdx < parameters.length) {
+          limit = parameters[limitParamIdx] as int?;
         }
       } else {
         limit = int.tryParse(limitToken);
@@ -95,9 +105,11 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
       final offsetToken = limitMatch.group(2);
       if (offsetToken != null) {
         if (offsetToken == '?') {
-          final paramIdx = RegExp(r'\?').allMatches(cleanSql.substring(0, limitMatch.start + 10)).length;
-          if (paramIdx < parameters.length) {
-            offset = parameters[paramIdx] as int?;
+          final offsetParamIdx = limitParamIdx >= 0
+              ? limitParamIdx + 1
+              : RegExp(r'\?').allMatches(cleanSql.substring(0, limitMatch.start + (limitMatch.group(0)?.indexOf('OFFSET') ?? 0))).length;
+          if (offsetParamIdx < parameters.length) {
+            offset = parameters[offsetParamIdx] as int?;
           }
         } else {
           offset = int.tryParse(offsetToken);
@@ -194,6 +206,16 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
           return d.compareTo(start!) >= 0 && d.compareTo(end!) <= 0;
         }).toList();
       }
+    }
+
+    // WHERE draw_date >= '...'
+    final gteDateMatch = RegExp(r'draw_date\s*>=\s*[\x27"]([^\x27"]+)[\x27"]', caseSensitive: false).firstMatch(sql);
+    if (gteDateMatch != null) {
+      final targetDate = gteDateMatch.group(1)!;
+      result = result.where((r) {
+        final d = r['draw_date']?.toString() ?? '';
+        return d.compareTo(targetDate) >= 0;
+      }).toList();
     }
 
     // IS_ACTIVE = 1
