@@ -11,6 +11,7 @@ class LottoResult {
   final int number5;
   final int number6;
   final double jackpotPrize;
+  final int winners;
   final String source;
   final String sourceUrl;
   final DateTime scrapedAt;
@@ -29,6 +30,7 @@ class LottoResult {
     required this.number5,
     required this.number6,
     required this.jackpotPrize,
+    this.winners = 0,
     this.source = 'PCSO',
     this.sourceUrl = 'https://www.pcso.gov.ph/searchlottoresult.aspx',
     required this.scrapedAt,
@@ -46,6 +48,8 @@ class LottoResult {
     return formatter.format(jackpotPrize);
   }
 
+  String get formattedWinners => winners == 1 ? '1 Winner' : '$winners Winners';
+
   factory LottoResult.fromMap(Map<String, dynamic> map) {
     return LottoResult(
       id: map['id'] as int,
@@ -58,6 +62,7 @@ class LottoResult {
       number5: map['number_5'] as int,
       number6: map['number_6'] as int,
       jackpotPrize: (map['jackpot_prize'] as num).toDouble(),
+      winners: (map['winners'] as num?)?.toInt() ?? 0,
       source: map['source'] as String? ?? 'PCSO',
       sourceUrl: map['source_url'] as String? ?? 'https://www.pcso.gov.ph/searchlottoresult.aspx',
       scrapedAt: DateTime.parse(map['scraped_at'] as String),
@@ -79,11 +84,52 @@ class LottoResult {
       'number_5': number5,
       'number_6': number6,
       'jackpot_prize': jackpotPrize,
+      'winners': winners,
       'source': source,
       'source_url': sourceUrl,
       'scraped_at': scrapedAt.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
+  }
+
+  LottoResult copyWith({
+    int? id,
+    int? lottoTypeId,
+    String? drawDate,
+    int? number1,
+    int? number2,
+    int? number3,
+    int? number4,
+    int? number5,
+    int? number6,
+    double? jackpotPrize,
+    int? winners,
+    String? source,
+    String? sourceUrl,
+    DateTime? scrapedAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? lottoTypeName,
+  }) {
+    return LottoResult(
+      id: id ?? this.id,
+      lottoTypeId: lottoTypeId ?? this.lottoTypeId,
+      drawDate: drawDate ?? this.drawDate,
+      number1: number1 ?? this.number1,
+      number2: number2 ?? this.number2,
+      number3: number3 ?? this.number3,
+      number4: number4 ?? this.number4,
+      number5: number5 ?? this.number5,
+      number6: number6 ?? this.number6,
+      jackpotPrize: jackpotPrize ?? this.jackpotPrize,
+      winners: winners ?? this.winners,
+      source: source ?? this.source,
+      sourceUrl: sourceUrl ?? this.sourceUrl,
+      scrapedAt: scrapedAt ?? this.scrapedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      lottoTypeName: lottoTypeName ?? this.lottoTypeName,
+    );
   }
 }

@@ -73,6 +73,7 @@ class _AdminResultsManagementPageState extends State<AdminResultsManagementPage>
     DateTime drawDate = DateTime.now();
     final numControllers = List.generate(6, (_) => TextEditingController());
     final jackpotController = TextEditingController(text: '15000000');
+    final winnersController = TextEditingController(text: '0');
     String? dialogError;
 
     showDialog(
@@ -148,6 +149,12 @@ class _AdminResultsManagementPageState extends State<AdminResultsManagementPage>
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(labelText: 'Jackpot Prize (PHP)', border: OutlineInputBorder()),
                   ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: winnersController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Number of Winners', border: OutlineInputBorder()),
+                  ),
                 ],
               ),
             ),
@@ -174,6 +181,7 @@ class _AdminResultsManagementPageState extends State<AdminResultsManagementPage>
                   }
 
                   final jackpot = double.tryParse(jackpotController.text.trim()) ?? 0.0;
+                  final winners = int.tryParse(winnersController.text.trim()) ?? 0;
                   final dateStr = DateFormat('yyyy-MM-dd').format(drawDate);
 
                   final newResult = LottoResult(
@@ -187,6 +195,7 @@ class _AdminResultsManagementPageState extends State<AdminResultsManagementPage>
                     number5: nums[4],
                     number6: nums[5],
                     jackpotPrize: jackpot,
+                    winners: winners,
                     source: 'ADMIN_MANUAL',
                     scrapedAt: DateTime.now(),
                     createdAt: DateTime.now(),
@@ -281,7 +290,7 @@ class _AdminResultsManagementPageState extends State<AdminResultsManagementPage>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(r.lottoTypeName ?? 'PCSO Lotto', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                            Text('Draw: ${r.drawDate} | Jackpot: ${r.formattedJackpot}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                            Text('Draw: ${r.drawDate} | Jackpot: ${r.formattedJackpot} | Winners: ${r.winners}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                           ],
                         ),
                         Wrap(

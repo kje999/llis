@@ -240,4 +240,19 @@ void main() {
       expect(res2.isWinning, isFalse);
     });
   });
+
+  group('PCSO Web Scraping & Winners Tests', () {
+    test('parses winners count and draw dates accurately from PCSO table format', () {
+      expect(PcsoParser.parseWinners('0'), equals(0));
+      expect(PcsoParser.parseWinners('1'), equals(1));
+      expect(PcsoParser.parseWinners('179'), equals(179));
+      expect(PcsoParser.parseWinners('1,250'), equals(1250));
+
+      // Normalizes M/d/yyyy to yyyy-MM-dd
+      expect(PcsoParser.parseDrawDate('10/4/2026'), equals('2026-10-04'));
+      expect(PcsoParser.parseDrawDate('1/2/2026'), equals('2026-01-02'));
+      expect(PcsoParser.parseDrawDate('2026-10-04'), equals('2026-10-04'));
+    });
+  });
 }
+

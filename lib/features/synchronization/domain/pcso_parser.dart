@@ -2,15 +2,17 @@ import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
 
 class RawPcsoDraw {
   final String gameName;
-  final String drawDate; // e.g. "10/04/2026" or "October 4, 2026"
+  final String drawDate; // e.g. "10/4/2026" or "2026-10-04"
   final List<int> numbers;
   final double jackpot;
+  final int winners;
 
   RawPcsoDraw({
     required this.gameName,
     required this.drawDate,
     required this.numbers,
     required this.jackpot,
+    this.winners = 0,
   });
 }
 
@@ -56,6 +58,28 @@ class PcsoParser {
   static double parseJackpot(String rawPrize) {
     final clean = rawPrize.replaceAll('₱', '').replaceAll(',', '').replaceAll(' ', '').trim();
     return double.tryParse(clean) ?? 0.0;
+  }
+
+  /// Parses number of winners like "0", "1", "179"
+  static int parseWinners(String rawWinners) {
+    final clean = rawWinners.replaceAll(',', '').replaceAll(' ', '').trim();
+    return int.tryParse(clean) ?? 0;
+  }
+
+  /// Normalizes PCSO date format "10/4/2026" or "10/04/2026" into ISO "2026-10-04"
+  static String parseDrawDate(String rawDate) {
+    final clean = rawDate.trim();
+    if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(clean)) {
+      return clean;
+    }
+    final mdyMatch = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(clean);
+    if (mdyMatch != null) {
+      final month = mdyMatch.group(1)!.padLeft(2, '0');
+      final day = mdyMatch.group(2)!.padLeft(2, '0');
+      final year = mdyMatch.group(3)!;
+      return '$year-$month-$day';
+    }
+    return clean;
   }
 
   /// Validates numbers against game range

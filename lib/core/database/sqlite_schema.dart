@@ -41,6 +41,7 @@ class SqliteSchema {
       number_5 INTEGER NOT NULL,
       number_6 INTEGER NOT NULL,
       jackpot_prize REAL NOT NULL,
+      winners INTEGER NOT NULL DEFAULT 0,
       source TEXT NOT NULL DEFAULT 'PCSO',
       source_url TEXT NOT NULL DEFAULT 'https://www.pcso.gov.ph/searchlottoresult.aspx',
       scraped_at TEXT NOT NULL,

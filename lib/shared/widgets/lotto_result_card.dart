@@ -93,13 +93,37 @@ class LottoResultCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Jackpot Prize: ${result.formattedJackpot}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: Color(0xFF1E3A8A),
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Jackpot Prize: ${result.formattedJackpot}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF1E3A8A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(
+                          result.winners > 0 ? Icons.emoji_events : Icons.person_outline,
+                          size: 14,
+                          color: result.winners > 0 ? Colors.amber.shade800 : Colors.blueGrey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Winners: ${result.winners}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: result.winners > 0 ? Colors.amber.shade900 : Colors.blueGrey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
                 Text(
                   'Source: ${result.source}',
