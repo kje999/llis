@@ -1,39 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:my_lucky_lotto_pred/core/theme/app_theme.dart';
-import 'package:my_lucky_lotto_pred/core/database/database_helper.dart';
-import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
-import 'package:my_lucky_lotto_pred/features/authentication/domain/auth_service.dart';
-import 'package:my_lucky_lotto_pred/features/authentication/domain/user_repository.dart';
-import 'package:my_lucky_lotto_pred/features/authentication/data/user_repository_impl.dart';
-import 'package:my_lucky_lotto_pred/features/authentication/presentation/login_page.dart';
-import 'package:my_lucky_lotto_pred/features/authentication/presentation/register_page.dart';
+import 'core/theme/app_theme.dart';
+import 'core/database/database_helper.dart';
+import 'core/database/database_executor.dart';
+import 'features/authentication/domain/auth_service.dart';
+import 'features/authentication/domain/user_repository.dart';
+import 'features/authentication/data/user_repository_impl.dart';
+import 'features/authentication/presentation/login_page.dart';
+import 'features/authentication/presentation/register_page.dart';
 
-import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_type_repository.dart';
-import 'package:my_lucky_lotto_pred/features/lotto_results/data/lotto_type_repository_impl.dart';
-import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
-import 'package:my_lucky_lotto_pred/features/lotto_results/data/lotto_result_repository_impl.dart';
+import 'features/lotto_results/domain/lotto_type_repository.dart';
+import 'features/lotto_results/data/lotto_type_repository_impl.dart';
+import 'features/lotto_results/domain/lotto_result_repository.dart';
+import 'features/lotto_results/data/lotto_result_repository_impl.dart';
 
-import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/lucky_pick_repository.dart';
-import 'package:my_lucky_lotto_pred/features/lucky_pick/data/lucky_pick_repository_impl.dart';
-import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/lucky_pick_service.dart';
+import 'features/lucky_pick/domain/lucky_pick_repository.dart';
+import 'features/lucky_pick/data/lucky_pick_repository_impl.dart';
+import 'features/lucky_pick/domain/lucky_pick_service.dart';
 
-import 'package:my_lucky_lotto_pred/features/synchronization/domain/synchronization_repository.dart';
-import 'package:my_lucky_lotto_pred/features/synchronization/data/synchronization_repository_impl.dart';
-import 'package:my_lucky_lotto_pred/features/synchronization/domain/synchronization_service.dart';
+import 'features/synchronization/domain/synchronization_repository.dart';
+import 'features/synchronization/data/synchronization_repository_impl.dart';
+import 'features/synchronization/domain/synchronization_service.dart';
 
-import 'package:my_lucky_lotto_pred/features/predictions/domain/prediction_repository.dart';
-import 'package:my_lucky_lotto_pred/features/predictions/data/prediction_repository_impl.dart';
+import 'features/predictions/domain/prediction_repository.dart';
+import 'features/predictions/data/prediction_repository_impl.dart';
 
-import 'package:my_lucky_lotto_pred/features/notifications/domain/notification_repository.dart';
-import 'package:my_lucky_lotto_pred/features/notifications/data/notification_repository_impl.dart';
+import 'features/notifications/domain/notification_repository.dart';
+import 'features/notifications/data/notification_repository_impl.dart';
 
-import 'package:my_lucky_lotto_pred/features/settings/domain/audit_repository.dart';
-import 'package:my_lucky_lotto_pred/features/settings/data/audit_repository_impl.dart';
+import 'features/settings/domain/audit_repository.dart';
+import 'features/settings/data/audit_repository_impl.dart';
 
-import 'package:my_lucky_lotto_pred/features/dashboard/client_dashboard.dart';
-import 'package:my_lucky_lotto_pred/features/dashboard/admin_dashboard.dart';
+import 'features/dashboard/client_dashboard.dart';
+import 'features/dashboard/admin_dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

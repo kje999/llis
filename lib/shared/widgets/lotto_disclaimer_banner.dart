@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_lucky_lotto_pred/core/constants/lotto_constants.dart';
+import '../../core/constants/lotto_constants.dart';
 
 class LottoDisclaimerBanner extends StatelessWidget {
   const LottoDisclaimerBanner({super.key});
@@ -35,4 +35,3 @@ class LottoDisclaimerBanner extends StatelessWidget {
     );
   }
 }
-
