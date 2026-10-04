@@ -34,8 +34,18 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
   final TextEditingController _htmlPasteController = TextEditingController();
 
   static const List<String> _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   static const List<Map<String, String>> _gameOptions = [
@@ -60,9 +70,16 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
 
     _toMonth = now.month;
     _toDay = now.day;
-    _toYear = now.year;
-
     _loadLogs();
+    _loadExistingDraws();
+  }
+
+  Future<void> _loadExistingDraws() async {
+    final resultRepo = context.read<LottoResultRepository>();
+    final recentDraws = await resultRepo.getAll(limit: 30, offset: 0);
+    if (mounted) {
+      setState(() => _scrapedResultsPreview = recentDraws);
+    }
   }
 
   @override
@@ -109,7 +126,8 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
       fromDate: _fromDate,
       toDate: _toDate,
       selectedGameCode: _selectedGame,
-      rawHtmlContent: _showHtmlPaste && _htmlPasteController.text.trim().isNotEmpty
+      rawHtmlContent:
+          _showHtmlPaste && _htmlPasteController.text.trim().isNotEmpty
           ? _htmlPasteController.text.trim()
           : null,
     );
@@ -142,7 +160,11 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                 children: [
                   Text(
                     'Official PCSO Web Scraping & Synchronization',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E3A8A),
+                    ),
                   ),
                   SizedBox(height: 4),
                   Text(
@@ -153,8 +175,13 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
               ),
               OutlinedButton.icon(
                 icon: Icon(_showHtmlPaste ? Icons.close : Icons.code, size: 16),
-                label: Text(_showHtmlPaste ? 'Hide HTML Importer' : 'Direct HTML/Text Table Import'),
-                onPressed: () => setState(() => _showHtmlPaste = !_showHtmlPaste),
+                label: Text(
+                  _showHtmlPaste
+                      ? 'Hide HTML Importer'
+                      : 'Direct HTML/Text Table Import',
+                ),
+                onPressed: () =>
+                    setState(() => _showHtmlPaste = !_showHtmlPaste),
               ),
             ],
           ),
@@ -163,7 +190,9 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
           // Direct HTML Paste Card (if enabled)
           if (_showHtmlPaste) ...[
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               color: Colors.amber.shade50.withValues(alpha: 0.5),
               elevation: 1,
               child: Padding(
@@ -175,8 +204,14 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                       children: [
                         Icon(Icons.terminal, color: Color(0xFF1E3A8A)),
                         SizedBox(width: 8),
-                        Text('Direct PCSO Portal HTML / Tabular Paste (CORS Bypass)',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E3A8A))),
+                        Text(
+                          'Direct PCSO Portal HTML / Tabular Paste (CORS Bypass)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Color(0xFF1E3A8A),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -188,10 +223,14 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                     TextField(
                       controller: _htmlPasteController,
                       maxLines: 5,
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        hintText: 'Paste <table> content or lines like: Ultra Lotto 6/58  10-48-11-15-46-26  10/4/2026  361,488,985.19  0',
+                        hintText:
+                            'Paste <table> content or lines like: Ultra Lotto 6/58  10-48-11-15-46-26  10/4/2026  361,488,985.19  0',
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -204,7 +243,9 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
 
           // PCSO Web Interface Controls Card
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             elevation: 2,
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -215,16 +256,32 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                     children: [
                       Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: const Color(0xFF1E3A8A).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                        child: const Icon(Icons.travel_explore, color: Color(0xFF1E3A8A), size: 24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E3A8A).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.travel_explore,
+                          color: Color(0xFF1E3A8A),
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Search Lotto Draw Result by Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Color(0xFF1E3A8A))),
-                          Text('Set the Start Date and End Date of Lotto Draw and select from the list of Lotto games below to view & synchronize results:',
-                              style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          Text(
+                            'Search Lotto Draw Result by Date',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                              color: Color(0xFF1E3A8A),
+                            ),
+                          ),
+                          Text(
+                            'Set the Start Date and End Date of Lotto Draw and select from the list of Lotto games below to view & synchronize results:',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
                         ],
                       ),
                     ],
@@ -238,7 +295,13 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      const Text('Presets: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const Text(
+                        'Presets: ',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
                       ActionChip(
                         avatar: const Icon(Icons.history, size: 14),
                         label: const Text('1 Year History (Recommended)'),
@@ -277,28 +340,54 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                               children: [
                                 const SizedBox(
                                   width: 130,
-                                  child: Text('Set Draw Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  child: Text(
+                                    'Set Draw Date',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
                                 ),
-                                const Text('From: ', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.blueGrey)),
+                                const Text(
+                                  'From: ',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: Colors.blueGrey,
+                                  ),
+                                ),
                                 const SizedBox(width: 8),
                                 _buildDateDropdowns(
                                   selectedMonth: _fromMonth,
                                   selectedDay: _fromDay,
                                   selectedYear: _fromYear,
-                                  onMonthChanged: (m) => setState(() => _fromMonth = m),
-                                  onDayChanged: (d) => setState(() => _fromDay = d),
-                                  onYearChanged: (y) => setState(() => _fromYear = y),
+                                  onMonthChanged: (m) =>
+                                      setState(() => _fromMonth = m),
+                                  onDayChanged: (d) =>
+                                      setState(() => _fromDay = d),
+                                  onYearChanged: (y) =>
+                                      setState(() => _fromYear = y),
                                 ),
                                 const SizedBox(width: 24),
-                                const Text('To: ', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.blueGrey)),
+                                const Text(
+                                  'To: ',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: Colors.blueGrey,
+                                  ),
+                                ),
                                 const SizedBox(width: 8),
                                 _buildDateDropdowns(
                                   selectedMonth: _toMonth,
                                   selectedDay: _toDay,
                                   selectedYear: _toYear,
-                                  onMonthChanged: (m) => setState(() => _toMonth = m),
-                                  onDayChanged: (d) => setState(() => _toDay = d),
-                                  onYearChanged: (y) => setState(() => _toYear = y),
+                                  onMonthChanged: (m) =>
+                                      setState(() => _toMonth = m),
+                                  onDayChanged: (d) =>
+                                      setState(() => _toDay = d),
+                                  onYearChanged: (y) =>
+                                      setState(() => _toYear = y),
                                 ),
                               ],
                             )
@@ -306,26 +395,44 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Set Draw Date From:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                const Text(
+                                  'Set Draw Date From:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 const SizedBox(height: 6),
                                 _buildDateDropdowns(
                                   selectedMonth: _fromMonth,
                                   selectedDay: _fromDay,
                                   selectedYear: _fromYear,
-                                  onMonthChanged: (m) => setState(() => _fromMonth = m),
-                                  onDayChanged: (d) => setState(() => _fromDay = d),
-                                  onYearChanged: (y) => setState(() => _fromYear = y),
+                                  onMonthChanged: (m) =>
+                                      setState(() => _fromMonth = m),
+                                  onDayChanged: (d) =>
+                                      setState(() => _fromDay = d),
+                                  onYearChanged: (y) =>
+                                      setState(() => _fromYear = y),
                                 ),
                                 const SizedBox(height: 14),
-                                const Text('Set Draw Date To:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                const Text(
+                                  'Set Draw Date To:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 const SizedBox(height: 6),
                                 _buildDateDropdowns(
                                   selectedMonth: _toMonth,
                                   selectedDay: _toDay,
                                   selectedYear: _toYear,
-                                  onMonthChanged: (m) => setState(() => _toMonth = m),
-                                  onDayChanged: (d) => setState(() => _toDay = d),
-                                  onYearChanged: (y) => setState(() => _toYear = y),
+                                  onMonthChanged: (m) =>
+                                      setState(() => _toMonth = m),
+                                  onDayChanged: (d) =>
+                                      setState(() => _toDay = d),
+                                  onYearChanged: (y) =>
+                                      setState(() => _toYear = y),
                                 ),
                               ],
                             ),
@@ -337,13 +444,23 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                             children: [
                               SizedBox(
                                 width: isMobile ? 120 : 130,
-                                child: const Text('Select Lotto Game', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                child: const Text(
+                                  'Select Lotto Game',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade400),
+                                  border: Border.all(
+                                    color: Colors.grey.shade400,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: DropdownButtonHideUnderline(
@@ -352,11 +469,15 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                                     items: _gameOptions.map((g) {
                                       return DropdownMenuItem<String>(
                                         value: g['code'],
-                                        child: Text(g['label']!, style: const TextStyle(fontSize: 13)),
+                                        child: Text(
+                                          g['label']!,
+                                          style: const TextStyle(fontSize: 13),
+                                        ),
                                       );
                                     }).toList(),
                                     onChanged: (val) {
-                                      if (val != null) setState(() => _selectedGame = val);
+                                      if (val != null)
+                                        setState(() => _selectedGame = val);
                                     },
                                   ),
                                 ),
@@ -374,16 +495,33 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1E3A8A),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 28,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       elevation: 2,
                     ),
                     icon: _isSyncing
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
                         : const Icon(Icons.search, size: 20),
                     label: Text(
-                      _isSyncing ? 'SCRAPING & SYNCHRONIZING...' : 'SEARCH & SCRAPE PCSO',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      _isSyncing
+                          ? 'SCRAPING & SYNCHRONIZING...'
+                          : 'SEARCH & SCRAPE PCSO',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                     onPressed: _isSyncing ? null : _runSync,
                   ),
@@ -394,10 +532,14 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: _lastSummary!.status == 'SUCCESS' ? Colors.green.shade50 : Colors.red.shade50,
+                        color: _lastSummary!.status == 'SUCCESS'
+                            ? Colors.green.shade50
+                            : Colors.red.shade50,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _lastSummary!.status == 'SUCCESS' ? Colors.green.shade300 : Colors.red.shade300,
+                          color: _lastSummary!.status == 'SUCCESS'
+                              ? Colors.green.shade300
+                              : Colors.red.shade300,
                         ),
                       ),
                       child: Column(
@@ -406,8 +548,12 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                           Row(
                             children: [
                               Icon(
-                                _lastSummary!.status == 'SUCCESS' ? Icons.check_circle : Icons.error,
-                                color: _lastSummary!.status == 'SUCCESS' ? Colors.green.shade700 : Colors.red.shade700,
+                                _lastSummary!.status == 'SUCCESS'
+                                    ? Icons.check_circle
+                                    : Icons.error,
+                                color: _lastSummary!.status == 'SUCCESS'
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -415,7 +561,9 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
-                                  color: _lastSummary!.status == 'SUCCESS' ? Colors.green.shade900 : Colors.red.shade900,
+                                  color: _lastSummary!.status == 'SUCCESS'
+                                      ? Colors.green.shade900
+                                      : Colors.red.shade900,
                                 ),
                               ),
                             ],
@@ -425,15 +573,37 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                             spacing: 16,
                             runSpacing: 8,
                             children: [
-                              _buildMetricChip('Found', _lastSummary!.recordsFound.toString(), Colors.blue),
-                              _buildMetricChip('Inserted', _lastSummary!.recordsInserted.toString(), Colors.green),
-                              _buildMetricChip('Updated', _lastSummary!.recordsUpdated.toString(), Colors.orange),
-                              _buildMetricChip('Skipped/Existing', _lastSummary!.recordsSkipped.toString(), Colors.grey),
+                              _buildMetricChip(
+                                'Found',
+                                _lastSummary!.recordsFound.toString(),
+                                Colors.blue,
+                              ),
+                              _buildMetricChip(
+                                'Inserted',
+                                _lastSummary!.recordsInserted.toString(),
+                                Colors.green,
+                              ),
+                              _buildMetricChip(
+                                'Updated',
+                                _lastSummary!.recordsUpdated.toString(),
+                                Colors.orange,
+                              ),
+                              _buildMetricChip(
+                                'Skipped/Existing',
+                                _lastSummary!.recordsSkipped.toString(),
+                                Colors.grey,
+                              ),
                             ],
                           ),
                           if (_lastSummary!.errorMessage != null) ...[
                             const SizedBox(height: 8),
-                            Text('Notice: ${_lastSummary!.errorMessage}', style: const TextStyle(color: Colors.red, fontSize: 12)),
+                            Text(
+                              'Notice: ${_lastSummary!.errorMessage}',
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -447,7 +617,9 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
 
           // Official Results Table Preview (Matching PCSO Search Results layout)
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             elevation: 2,
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -457,10 +629,21 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Search Results', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                      const Text(
+                        'Search Results',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E3A8A),
+                        ),
+                      ),
                       Text(
                         'Total Stored: ${_scrapedResultsPreview.length} recent draw(s)',
-                        style: const TextStyle(fontSize: 12, color: Colors.blueGrey, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.blueGrey,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -471,10 +654,19 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                         padding: const EdgeInsets.all(32),
                         child: Column(
                           children: [
-                            Icon(Icons.table_rows_outlined, size: 48, color: Colors.grey.shade400),
+                            Icon(
+                              Icons.table_rows_outlined,
+                              size: 48,
+                              color: Colors.grey.shade400,
+                            ),
                             const SizedBox(height: 8),
-                            Text('No draw results in database yet. Click "SEARCH & SCRAPE PCSO" above to synchronize.',
-                                style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                            Text(
+                              'No draw results in database yet. Click "SEARCH & SCRAPE PCSO" above to synchronize.',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 13,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -483,8 +675,14 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: DataTable(
-                        headingRowColor: WidgetStateProperty.all(const Color(0xFF1E3A8A)),
-                        headingTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                        headingRowColor: WidgetStateProperty.all(
+                          const Color(0xFF1E3A8A),
+                        ),
+                        headingTextStyle: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                         dataRowMinHeight: 52,
                         dataRowMaxHeight: 64,
                         columns: const [
@@ -500,31 +698,66 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                               DataCell(
                                 Text(
                                   r.lottoTypeName ?? 'PCSO Lotto',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                               DataCell(
                                 Wrap(
                                   spacing: 4,
-                                  children: r.numbers.map((n) => LottoBall(number: n, size: 28)).toList(),
+                                  children: r.numbers
+                                      .map(
+                                        (n) => LottoBall(number: n, size: 28),
+                                      )
+                                      .toList(),
                                 ),
                               ),
-                              DataCell(Text(r.drawDate, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-                              DataCell(Text(r.formattedJackpot, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)))),
+                              DataCell(
+                                Text(
+                                  r.drawDate,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  r.formattedJackpot,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E3A8A),
+                                  ),
+                                ),
+                              ),
                               DataCell(
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: r.winners > 0 ? Colors.amber.shade100 : Colors.grey.shade100,
+                                    color: r.winners > 0
+                                        ? Colors.amber.shade100
+                                        : Colors.grey.shade100,
                                     borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: r.winners > 0 ? Colors.amber.shade300 : Colors.grey.shade300),
+                                    border: Border.all(
+                                      color: r.winners > 0
+                                          ? Colors.amber.shade300
+                                          : Colors.grey.shade300,
+                                    ),
                                   ),
                                   child: Text(
                                     r.winners.toString(),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 13,
-                                      color: r.winners > 0 ? Colors.brown.shade900 : Colors.black87,
+                                      color: r.winners > 0
+                                          ? Colors.brown.shade900
+                                          : Colors.black87,
                                     ),
                                   ),
                                 ),
@@ -541,14 +774,28 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
           const SizedBox(height: 24),
 
           // Audit Logs
-          const Text('Recent Synchronization Audit Logs', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+          const Text(
+            'Recent Synchronization Audit Logs',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1E3A8A),
+            ),
+          ),
           const SizedBox(height: 12),
           if (_logs.isEmpty)
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: const Padding(
                 padding: EdgeInsets.all(24),
-                child: Center(child: Text('No synchronization logs recorded yet.', style: TextStyle(color: Colors.grey))),
+                child: Center(
+                  child: Text(
+                    'No synchronization logs recorded yet.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
               ),
             )
           else
@@ -560,17 +807,29 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                 final l = _logs[index];
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: l.status == 'SUCCESS' ? Colors.green.shade100 : Colors.red.shade100,
+                      backgroundColor: l.status == 'SUCCESS'
+                          ? Colors.green.shade100
+                          : Colors.red.shade100,
                       child: Icon(
                         l.status == 'SUCCESS' ? Icons.check : Icons.error,
-                        color: l.status == 'SUCCESS' ? Colors.green.shade800 : Colors.red.shade800,
+                        color: l.status == 'SUCCESS'
+                            ? Colors.green.shade800
+                            : Colors.red.shade800,
                         size: 20,
                       ),
                     ),
-                    title: Text('Sync Status: ${l.status}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    title: Text(
+                      'Sync Status: ${l.status}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                     subtitle: Text(
                       'Found: ${l.recordsFound} | Inserted: ${l.recordsInserted} | Updated: ${l.recordsUpdated} | Skipped: ${l.recordsSkipped}\n'
                       'Started: ${DateFormat('yyyy-MM-dd HH:mm').format(l.startedAt)}',
@@ -578,7 +837,11 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                     ),
                     trailing: Text(
                       '${l.completedAt.difference(l.startedAt).inSeconds}s',
-                      style: const TextStyle(fontSize: 12, color: Colors.blueGrey, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.blueGrey,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 );
@@ -604,12 +867,21 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
         // Month combo
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(6)),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade400),
+            borderRadius: BorderRadius.circular(6),
+          ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
               value: selectedMonth,
               items: List.generate(12, (i) => i + 1).map((m) {
-                return DropdownMenuItem<int>(value: m, child: Text(_months[m - 1], style: const TextStyle(fontSize: 13)));
+                return DropdownMenuItem<int>(
+                  value: m,
+                  child: Text(
+                    _months[m - 1],
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                );
               }).toList(),
               onChanged: (val) {
                 if (val != null) onMonthChanged(val);
@@ -620,12 +892,21 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
         // Day combo
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(6)),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade400),
+            borderRadius: BorderRadius.circular(6),
+          ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
               value: selectedDay,
               items: List.generate(31, (i) => i + 1).map((d) {
-                return DropdownMenuItem<int>(value: d, child: Text(d.toString(), style: const TextStyle(fontSize: 13)));
+                return DropdownMenuItem<int>(
+                  value: d,
+                  child: Text(
+                    d.toString(),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                );
               }).toList(),
               onChanged: (val) {
                 if (val != null) onDayChanged(val);
@@ -636,12 +917,21 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
         // Year combo
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(6)),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade400),
+            borderRadius: BorderRadius.circular(6),
+          ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
               value: selectedYear,
               items: [2024, 2025, 2026, 2027].map((y) {
-                return DropdownMenuItem<int>(value: y, child: Text(y.toString(), style: const TextStyle(fontSize: 13)));
+                return DropdownMenuItem<int>(
+                  value: y,
+                  child: Text(
+                    y.toString(),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                );
               }).toList(),
               onChanged: (val) {
                 if (val != null) onYearChanged(val);
@@ -661,7 +951,14 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Text('$label: $value', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
     );
   }
 }

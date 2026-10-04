@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Node.js backend
+node_modules/
+backend_sync_service/node_modules/
+*.db-shm
+*.db-wal

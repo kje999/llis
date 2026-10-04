@@ -65,20 +65,25 @@ lib/
 
 ---
 
-## 5. PCSO Scraping Architecture & CORS Gateway
-Browser CORS policies prevent direct client-side scraping of `https://www.pcso.gov.ph/searchlottoresult.aspx`.
-A dedicated microservice is provided in `backend_sync_service/server.dart` that fetches, parses, validates, and serves standardized JSON with CORS headers:
+## 5. PCSO Scraping Architecture & Background Service
+The system uses the #1 industry-standard background architecture:
+- **Playwright Headless Chromium**: Bypasses Akamai WAF and renders PCSO tables with winner counts.
+- **SQLite Central Cache**: `llis_central_sync.db` stores 1-year history with instant query response times.
+- **Express REST API (Port 8081)**: Serves clean, normalized JSON to the Flutter Web app.
+- **Automated Nightly Cron**: Triggers daily at 9:30 PM (21:30 PHT) following official PCSO 9:00 PM draws.
 
-```bash
-# Run the synchronization backend service:
-dart run backend_sync_service/server.dart
-```
+### Running with 1-Click Batch Files:
+1. **To run the Full System (Both App + Sync Service):**
+   - Double-click **`run_llis_full_system.bat`** in the project root.
+   - This launches the Sync Microservice on port 8081, launches the Flutter Web app on port 8080, and opens your browser.
 
-When offline or in standalone web mode, the Flutter application includes an automated resilient fallback mechanism to simulate and process the latest official draws.
+2. **To run only the Background Sync Service:**
+   - Double-click **`run_backend_sync.bat`**.
+   - Or run in terminal: `cd backend_sync_service && npm start`
 
 ---
 
-## 6. How to Run the Application
+## 6. How to Run the Application manually
 
 ### Prerequisites
 - Flutter SDK 3.10+ installed

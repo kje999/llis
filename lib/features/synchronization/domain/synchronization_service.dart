@@ -45,17 +45,17 @@ class SynchronizationService {
     required LuckyPickService pickService,
     required SynchronizationRepository syncRepo,
     required NotificationRepository notifRepo,
-  })  : _typeRepo = typeRepo,
-        _resultRepo = resultRepo,
-        _pickRepo = pickRepo,
-        _pickService = pickService,
-        _syncRepo = syncRepo,
-        _notifRepo = notifRepo;
+  }) : _typeRepo = typeRepo,
+       _resultRepo = resultRepo,
+       _pickRepo = pickRepo,
+       _pickService = pickService,
+       _syncRepo = syncRepo,
+       _notifRepo = notifRepo;
 
   /// Runs PCSO synchronization:
-  /// Connects to backend sync service, parses direct HTML if provided, or generates live draws for date range
+  /// Connects to backend sync service (port 8081), parses direct HTML if provided, or generates live draws for date range
   Future<SyncSummary> synchronize({
-    String syncEndpoint = 'http://localhost:8080/api/pcso-results',
+    String syncEndpoint = 'http://localhost:8081/api/pcso-results',
     DateTime? fromDate,
     DateTime? toDate,
     String? selectedGameCode,
@@ -69,7 +69,8 @@ class SynchronizationService {
     String? error;
 
     final targetEnd = toDate ?? DateTime.now();
-    final targetStart = fromDate ?? targetEnd.subtract(const Duration(days: 365));
+    final targetStart =
+        fromDate ?? targetEnd.subtract(const Duration(days: 365));
 
     try {
       List<Map<String, dynamic>> rawDraws = [];
@@ -82,13 +83,18 @@ class SynchronizationService {
       // 2. If no direct HTML was provided, query the synchronization API / scraper
       if (rawDraws.isEmpty) {
         try {
-          final uri = Uri.parse(syncEndpoint).replace(queryParameters: {
-            'startDate': DateFormat('yyyy-MM-dd').format(targetStart),
-            'endDate': DateFormat('yyyy-MM-dd').format(targetEnd),
-            if (selectedGameCode != null && selectedGameCode != 'ALL') 'game': selectedGameCode,
-          });
+          final uri = Uri.parse(syncEndpoint).replace(
+            queryParameters: {
+              'startDate': DateFormat('yyyy-MM-dd').format(targetStart),
+              'endDate': DateFormat('yyyy-MM-dd').format(targetEnd),
+              if (selectedGameCode != null && selectedGameCode != 'ALL')
+                'game': selectedGameCode,
+            },
+          );
 
-          final response = await http.get(uri).timeout(const Duration(seconds: 4));
+          final response = await http
+              .get(uri)
+              .timeout(const Duration(seconds: 4));
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body);
             if (data is List) {
@@ -98,13 +104,21 @@ class SynchronizationService {
         } catch (_) {
           // Fallback: If external scraping endpoint is blocked or offline,
           // execute range-based scraper generator for the specified From Date -> To Date
-          rawDraws = _generateRangeDraws(targetStart, targetEnd, selectedGameCode);
+          rawDraws = _generateRangeDraws(
+            targetStart,
+            targetEnd,
+            selectedGameCode,
+          );
         }
       }
 
       // If still empty, use range generator
       if (rawDraws.isEmpty) {
-        rawDraws = _generateRangeDraws(targetStart, targetEnd, selectedGameCode);
+        rawDraws = _generateRangeDraws(
+          targetStart,
+          targetEnd,
+          selectedGameCode,
+        );
       }
 
       found = rawDraws.length;
@@ -120,7 +134,9 @@ class SynchronizationService {
         }
 
         // Apply game filter if specified
-        if (selectedGameCode != null && selectedGameCode != 'ALL' && gameCode != selectedGameCode) {
+        if (selectedGameCode != null &&
+            selectedGameCode != 'ALL' &&
+            gameCode != selectedGameCode) {
           skipped++;
           continue;
         }
@@ -129,12 +145,15 @@ class SynchronizationService {
         final rawNumbers = raw['numbers']?.toString() ?? '';
         final numbers = PcsoParser.parseNumbers(rawNumbers);
 
-        if (numbers == null || !PcsoParser.validateAgainstType(lottoType, numbers)) {
+        if (numbers == null ||
+            !PcsoParser.validateAgainstType(lottoType, numbers)) {
           skipped++;
           continue;
         }
 
-        final rawDate = raw['draw_date']?.toString() ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
+        final rawDate =
+            raw['draw_date']?.toString() ??
+            DateFormat('yyyy-MM-dd').format(DateTime.now());
         final drawDate = PcsoParser.parseDrawDate(rawDate);
         final jackpot = (raw['jackpot'] as num?)?.toDouble() ?? 0.0;
         final winners = (raw['winners'] as num?)?.toInt() ?? 0;
@@ -185,7 +204,9 @@ class SynchronizationService {
     }
 
     final endTime = DateTime.now();
-    final status = error == null ? (inserted > 0 || updated > 0 ? 'SUCCESS' : 'SUCCESS') : 'FAILED';
+    final status = error == null
+        ? (inserted > 0 || updated > 0 ? 'SUCCESS' : 'SUCCESS')
+        : 'FAILED';
 
     final log = SynchronizationLog(
       id: 0,
@@ -212,8 +233,15 @@ class SynchronizationService {
     );
   }
 
-  Future<void> _checkSavedPicksAndNotify(int lottoTypeId, String drawDate, List<int> officialNumbers) async {
-    final uncheckedPicks = await _pickRepo.getUncheckedPicks(lottoTypeId, drawDate);
+  Future<void> _checkSavedPicksAndNotify(
+    int lottoTypeId,
+    String drawDate,
+    List<int> officialNumbers,
+  ) async {
+    final uncheckedPicks = await _pickRepo.getUncheckedPicks(
+      lottoTypeId,
+      drawDate,
+    );
 
     for (final pick in uncheckedPicks) {
       final matches = _pickService.countMatches(pick.numbers, officialNumbers);
@@ -227,14 +255,17 @@ class SynchronizationService {
       await _pickRepo.update(updatedPick);
 
       // Create notification for user
-      await _notifRepo.insert(InAppNotification(
-        id: 0,
-        userId: pick.userId,
-        title: 'Lotto Draw Result Checked',
-        message: 'Your saved pick for draw $drawDate matched $matches number(s). Status: $status.',
-        category: matches >= 3 ? 'MATCH_FOUND' : 'LUCKY_PICK_CHECKED',
-        createdAt: DateTime.now(),
-      ));
+      await _notifRepo.insert(
+        InAppNotification(
+          id: 0,
+          userId: pick.userId,
+          title: 'Lotto Draw Result Checked',
+          message:
+              'Your saved pick for draw $drawDate matched $matches number(s). Status: $status.',
+          category: matches >= 3 ? 'MATCH_FOUND' : 'LUCKY_PICK_CHECKED',
+          createdAt: DateTime.now(),
+        ),
+      );
     }
   }
 
@@ -243,13 +274,21 @@ class SynchronizationService {
     final results = <Map<String, dynamic>>[];
 
     // Extract table rows: <tr>...<td>...</td>...</tr>
-    final rowRegex = RegExp(r'<tr[^>]*>(.*?)<\/tr>', caseSensitive: false, dotAll: true);
+    final rowRegex = RegExp(
+      r'<tr[^>]*>(.*?)<\/tr>',
+      caseSensitive: false,
+      dotAll: true,
+    );
     final rowMatches = rowRegex.allMatches(text);
 
     if (rowMatches.isNotEmpty) {
       for (final r in rowMatches) {
         final rowContent = r.group(1)!;
-        final cellRegex = RegExp(r'<td[^>]*>(.*?)<\/td>', caseSensitive: false, dotAll: true);
+        final cellRegex = RegExp(
+          r'<td[^>]*>(.*?)<\/td>',
+          caseSensitive: false,
+          dotAll: true,
+        );
         final cells = cellRegex.allMatches(rowContent).map((m) {
           return m.group(1)!.replaceAll(RegExp(r'<[^>]*>'), '').trim();
         }).toList();
@@ -259,7 +298,9 @@ class SynchronizationService {
           final comb = cells[1];
           final date = cells[2];
           final prize = cells[3];
-          final winners = cells.length >= 5 ? PcsoParser.parseWinners(cells[4]) : 0;
+          final winners = cells.length >= 5
+              ? PcsoParser.parseWinners(cells[4])
+              : 0;
 
           if (PcsoParser.normalizeGameCode(game) != null) {
             results.add({
@@ -284,7 +325,9 @@ class SynchronizationService {
           final comb = parts[1];
           final date = parts[2];
           final prize = parts[3];
-          final winners = parts.length >= 5 ? PcsoParser.parseWinners(parts[4]) : 0;
+          final winners = parts.length >= 5
+              ? PcsoParser.parseWinners(parts[4])
+              : 0;
 
           if (PcsoParser.normalizeGameCode(game) != null) {
             results.add({
@@ -303,15 +346,44 @@ class SynchronizationService {
   }
 
   /// Generates realistic official PCSO draws for the specified date range according to official schedules
-  List<Map<String, dynamic>> _generateRangeDraws(DateTime startDate, DateTime endDate, String? gameFilter) {
+  List<Map<String, dynamic>> _generateRangeDraws(
+    DateTime startDate,
+    DateTime endDate,
+    String? gameFilter,
+  ) {
     final results = <Map<String, dynamic>>[];
 
     final games = [
-      {'name': 'Ultra Lotto 6/58', 'max': 58, 'jackpot': 361488985.19, 'days': [2, 5, 7]}, // Tue, Fri, Sun
-      {'name': 'Grand Lotto 6/55', 'max': 55, 'jackpot': 29800000.00, 'days': [1, 3, 6]},  // Mon, Wed, Sat
-      {'name': 'Super Lotto 6/49', 'max': 49, 'jackpot': 34464909.57, 'days': [2, 4, 7]},  // Tue, Thu, Sun
-      {'name': 'Mega Lotto 6/45', 'max': 45, 'jackpot': 11300000.00, 'days': [1, 3, 5]},   // Mon, Wed, Fri
-      {'name': 'Lotto 6/42', 'max': 42, 'jackpot': 7450000.00, 'days': [2, 4, 6]},         // Tue, Thu, Sat
+      {
+        'name': 'Ultra Lotto 6/58',
+        'max': 58,
+        'jackpot': 361488985.19,
+        'days': [2, 5, 7],
+      }, // Tue, Fri, Sun
+      {
+        'name': 'Grand Lotto 6/55',
+        'max': 55,
+        'jackpot': 29800000.00,
+        'days': [1, 3, 6],
+      }, // Mon, Wed, Sat
+      {
+        'name': 'Super Lotto 6/49',
+        'max': 49,
+        'jackpot': 34464909.57,
+        'days': [2, 4, 7],
+      }, // Tue, Thu, Sun
+      {
+        'name': 'Mega Lotto 6/45',
+        'max': 45,
+        'jackpot': 11300000.00,
+        'days': [1, 3, 5],
+      }, // Mon, Wed, Fri
+      {
+        'name': 'Lotto 6/42',
+        'max': 42,
+        'jackpot': 7450000.00,
+        'days': [2, 4, 6],
+      }, // Tue, Thu, Sat
     ];
 
     DateTime current = endDate;
@@ -347,7 +419,8 @@ class SynchronizationService {
           } else {
             final set = <int>{};
             final maxNum = g['max'] as int;
-            int seed = current.millisecondsSinceEpoch ~/ 86400000 + gName.length * 31;
+            int seed =
+                current.millisecondsSinceEpoch ~/ 86400000 + gName.length * 31;
             while (set.length < 6) {
               seed = (seed * 9301 + 49297) % 233280;
               set.add(1 + (seed % maxNum));
