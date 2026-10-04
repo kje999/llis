@@ -21,6 +21,11 @@ class _AdminResultsManagementPageState extends State<AdminResultsManagementPage>
   List<LottoResult> _results = [];
   bool _isLoading = true;
 
+  // Pagination Configuration: 20 per page, latest first
+  static const int _pageSize = 20;
+  int _currentPage = 1;
+  int _totalRecords = 0;
+
   @override
   void initState() {
     super.initState();
@@ -32,15 +37,34 @@ class _AdminResultsManagementPageState extends State<AdminResultsManagementPage>
     final resultRepo = context.read<LottoResultRepository>();
 
     final types = await typeRepo.getAll();
-    final results = await resultRepo.getAll(limit: 50);
+    final total = await resultRepo.getTotalCount();
+    final offset = (_currentPage - 1) * _pageSize;
+
+    // Ordered by draw_date DESC (recent/latest top)
+    final results = await resultRepo.getAll(limit: _pageSize, offset: offset);
 
     if (mounted) {
       setState(() {
         _types = types;
+        _totalRecords = total;
         _results = results;
         _isLoading = false;
       });
     }
+  }
+
+  int get _totalPages {
+    if (_totalRecords == 0) return 1;
+    return (_totalRecords / _pageSize).ceil();
+  }
+
+  void _onPageChanged(int newPage) {
+    if (newPage < 1 || newPage > _totalPages) return;
+    setState(() {
+      _currentPage = newPage;
+      _isLoading = true;
+    });
+    _loadData();
   }
 
   void _showAddResultDialog() {
@@ -212,10 +236,33 @@ class _AdminResultsManagementPageState extends State<AdminResultsManagementPage>
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
+          // Results Info Bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Showing ${((_currentPage - 1) * _pageSize) + 1}–${(((_currentPage - 1) * _pageSize) + _results.length).clamp(0, _totalRecords)} of $_totalRecords draw results (Latest first)',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF1E3A8A)),
+                ),
+                Text(
+                  'Page $_currentPage of $_totalPages',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
-          else
+          else ...[
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -268,6 +315,37 @@ class _AdminResultsManagementPageState extends State<AdminResultsManagementPage>
                 );
               },
             ),
+            const SizedBox(height: 16),
+            // Pagination Controls
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.arrow_back, size: 16),
+                    label: const Text('Previous 20'),
+                    onPressed: _currentPage > 1 ? () => _onPageChanged(_currentPage - 1) : null,
+                  ),
+                  Text(
+                    'Page $_currentPage of $_totalPages (20 items/page)',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A)),
+                  ),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+                    icon: const Icon(Icons.arrow_forward, size: 16),
+                    label: const Text('Next 20'),
+                    onPressed: _currentPage < _totalPages ? () => _onPageChanged(_currentPage + 1) : null,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

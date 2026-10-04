@@ -19,6 +19,11 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
   List<LottoResult> _results = [];
   bool _isLoading = true;
 
+  // Pagination Configuration: Minimum 20 results per page
+  static const int _pageSize = 20;
+  int _currentPage = 1;
+  int _totalRecords = 0;
+
   @override
   void initState() {
     super.initState();
@@ -30,15 +35,38 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
     final resultRepo = context.read<LottoResultRepository>();
 
     final types = await typeRepo.getAll();
-    final results = await resultRepo.getAll(limit: 60, lottoTypeId: _selectedTypeId);
+    final total = await resultRepo.getTotalCount(lottoTypeId: _selectedTypeId);
+
+    final offset = (_currentPage - 1) * _pageSize;
+    // Guaranteed sorted descending by date (recent and latest top)
+    final results = await resultRepo.getAll(
+      limit: _pageSize,
+      offset: offset,
+      lottoTypeId: _selectedTypeId,
+    );
 
     if (mounted) {
       setState(() {
         _types = types;
+        _totalRecords = total;
         _results = results;
         _isLoading = false;
       });
     }
+  }
+
+  void _onPageChanged(int newPage) {
+    if (newPage < 1 || newPage > _totalPages) return;
+    setState(() {
+      _currentPage = newPage;
+      _isLoading = true;
+    });
+    _loadData();
+  }
+
+  int get _totalPages {
+    if (_totalRecords == 0) return 1;
+    return (_totalRecords / _pageSize).ceil();
   }
 
   @override
@@ -60,13 +88,18 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Synchronized authoritative draw results for Philippine 6-number lotto games.',
+                    'Authoritative historical draw results sorted from most recent to oldest (20 results per page).',
                     style: TextStyle(fontSize: 13, color: Colors.blueGrey),
                   ),
                 ],
               ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E3A8A),
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Refresh'),
                 onPressed: () {
                   setState(() => _isLoading = true);
                   _loadData();
@@ -75,7 +108,7 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
             ],
           ),
           const SizedBox(height: 16),
-          // Filter Chips
+          // Game Filter Chips
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -83,9 +116,11 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
                 FilterChip(
                   label: const Text('All 5 Lotto Games'),
                   selected: _selectedTypeId == null,
+                  selectedColor: const Color(0xFF1E3A8A).withValues(alpha: 0.15),
                   onSelected: (val) {
                     setState(() {
                       _selectedTypeId = null;
+                      _currentPage = 1;
                       _isLoading = true;
                     });
                     _loadData();
@@ -97,9 +132,11 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
                       child: FilterChip(
                         label: Text(type.name),
                         selected: _selectedTypeId == type.id,
+                        selectedColor: const Color(0xFF1E3A8A).withValues(alpha: 0.15),
                         onSelected: (val) {
                           setState(() {
                             _selectedTypeId = val ? type.id : null;
+                            _currentPage = 1;
                             _isLoading = true;
                           });
                           _loadData();
@@ -110,8 +147,42 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
             ),
           ),
           const SizedBox(height: 16),
+          // Results Count & Page Information Bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.sort, size: 18, color: Color(0xFF1E3A8A)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Showing ${((_currentPage - 1) * _pageSize) + 1}–${(((_currentPage - 1) * _pageSize) + _results.length).clamp(0, _totalRecords)} of $_totalRecords results (Latest draw on top)',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF1E3A8A)),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Page $_currentPage of $_totalPages',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           if (_isLoading)
-            const Center(child: CircularProgressIndicator())
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: CircularProgressIndicator(),
+              ),
+            )
           else if (_results.isEmpty)
             Center(
               child: Padding(
@@ -119,7 +190,7 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
                 child: Text('No draw results found for selected filter.', style: TextStyle(color: Colors.grey.shade600)),
               ),
             )
-          else
+          else ...[
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -128,6 +199,64 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
                 return LottoResultCard(result: _results[index]);
               },
             ),
+            const SizedBox(height: 20),
+            // Bottom Pagination Controls
+            _buildPaginationControls(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Previous Button
+          OutlinedButton.icon(
+            icon: const Icon(Icons.arrow_back, size: 16),
+            label: const Text('Previous 20'),
+            onPressed: _currentPage > 1 ? () => _onPageChanged(_currentPage - 1) : null,
+          ),
+          // Page Indicator & Numbers
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Page $_currentPage of $_totalPages',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A)),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '(20 items/page)',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          // Next Button
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E3A8A),
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.arrow_forward, size: 16),
+            label: const Text('Next 20'),
+            onPressed: _currentPage < _totalPages ? () => _onPageChanged(_currentPage + 1) : null,
+          ),
         ],
       ),
     );

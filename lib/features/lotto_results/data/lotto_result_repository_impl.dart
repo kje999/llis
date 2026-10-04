@@ -105,8 +105,14 @@ class LottoResultRepositoryImpl implements LottoResultRepository {
   }
 
   @override
-  Future<int> getTotalCount() async {
-    final rows = await _db.query('SELECT COUNT(*) as count FROM lotto_results');
+  Future<int> getTotalCount({int? lottoTypeId}) async {
+    String sql = 'SELECT COUNT(*) as count FROM lotto_results';
+    final params = <Object?>[];
+    if (lottoTypeId != null) {
+      sql += ' WHERE lotto_type_id = ?';
+      params.add(lottoTypeId);
+    }
+    final rows = await _db.query(sql, params);
     if (rows.isEmpty) return 0;
     return rows.first['count'] as int? ?? 0;
   }
