@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:intl/intl.dart';
 import 'database_executor.dart';
-import '../security/password_hasher.dart';
+import 'package:my_lucky_lotto_pred/core/security/password_hasher.dart';
 
 class DatabaseSeeder {
   static Future<void> seed(DatabaseExecutor db) async {

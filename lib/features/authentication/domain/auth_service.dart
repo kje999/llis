@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import '../../../core/security/password_hasher.dart';
-import '../../../shared/models/user.dart';
-import '../domain/user_repository.dart';
+import 'package:my_lucky_lotto_pred/core/security/password_hasher.dart';
+import 'package:my_lucky_lotto_pred/shared/models/user.dart';
+import 'package:my_lucky_lotto_pred/features/authentication/domain/user_repository.dart';
 
 class AuthService extends ChangeNotifier {
   final UserRepository _userRepo;

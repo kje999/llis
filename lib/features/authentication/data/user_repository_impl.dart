@@ -1,6 +1,6 @@
-import '../../../core/database/database_executor.dart';
-import '../../../shared/models/user.dart';
-import '../domain/user_repository.dart';
+import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
+import 'package:my_lucky_lotto_pred/shared/models/user.dart';
+import 'package:my_lucky_lotto_pred/features/authentication/domain/user_repository.dart';
 
 class UserRepositoryImpl implements UserRepository {
   final DatabaseExecutor _db;

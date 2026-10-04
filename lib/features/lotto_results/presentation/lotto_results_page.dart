@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../lotto_results/domain/lotto_type_repository.dart';
-import '../../lotto_results/domain/lotto_result_repository.dart';
-import '../../shared/models/lotto_type.dart';
-import '../../shared/models/lotto_result.dart';
-import '../../shared/widgets/lotto_result_card.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_type_repository.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
+import 'package:my_lucky_lotto_pred/shared/widgets/lotto_result_card.dart';
 
 class LottoResultsPage extends StatefulWidget {
   const LottoResultsPage({super.key});

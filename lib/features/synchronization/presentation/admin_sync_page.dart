@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../domain/synchronization_service.dart';
-import '../domain/synchronization_repository.dart';
-import '../../shared/models/synchronization_log.dart';
+import 'package:my_lucky_lotto_pred/features/synchronization/domain/synchronization_service.dart';
+import 'package:my_lucky_lotto_pred/features/synchronization/domain/synchronization_repository.dart';
+import 'package:my_lucky_lotto_pred/shared/models/synchronization_log.dart';
 
 class AdminSyncPage extends StatefulWidget {
   const AdminSyncPage({super.key});

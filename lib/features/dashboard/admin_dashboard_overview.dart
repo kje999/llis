@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../authentication/domain/auth_service.dart';
-import '../../lotto_results/domain/lotto_result_repository.dart';
-import '../../lucky_pick/domain/lucky_pick_repository.dart';
-import '../../synchronization/domain/synchronization_repository.dart';
-import '../../authentication/domain/user_repository.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
+import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/lucky_pick_repository.dart';
+import 'package:my_lucky_lotto_pred/features/synchronization/domain/synchronization_repository.dart';
+import 'package:my_lucky_lotto_pred/features/authentication/domain/user_repository.dart';
 
 class AdminDashboardOverview extends StatefulWidget {
   final Function(int) onNavigateTab;

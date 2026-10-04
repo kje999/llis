@@ -1,4 +1,4 @@
-import '../../shared/models/lotto_type.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
 
 class RawPcsoDraw {
   final String gameName;

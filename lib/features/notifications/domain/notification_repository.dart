@@ -1,4 +1,4 @@
-import '../../../shared/models/in_app_notification.dart';
+import 'package:my_lucky_lotto_pred/shared/models/in_app_notification.dart';
 
 abstract class NotificationRepository {
   Future<List<InAppNotification>> getByUserId(int userId, {int limit = 50});

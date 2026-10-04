@@ -1,4 +1,4 @@
-import '../../../shared/models/lucky_pick.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lucky_pick.dart';
 
 abstract class LuckyPickRepository {
   Future<List<LuckyPick>> getByUserId(int userId);

@@ -1,6 +1,6 @@
-import '../../../core/database/database_executor.dart';
-import '../../../shared/models/audit_log.dart';
-import '../domain/audit_repository.dart';
+import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
+import 'package:my_lucky_lotto_pred/shared/models/audit_log.dart';
+import 'package:my_lucky_lotto_pred/features/settings/domain/audit_repository.dart';
 
 class AuditRepositoryImpl implements AuditRepository {
   final DatabaseExecutor _db;

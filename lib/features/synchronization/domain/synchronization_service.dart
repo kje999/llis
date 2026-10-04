@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import '../../lotto_results/domain/lotto_type_repository.dart';
-import '../../lotto_results/domain/lotto_result_repository.dart';
-import '../../lucky_pick/domain/lucky_pick_repository.dart';
-import '../../lucky_pick/domain/lucky_pick_service.dart';
-import '../../notifications/domain/notification_repository.dart';
-import '../domain/synchronization_repository.dart';
-import '../../shared/models/lotto_result.dart';
-import '../../shared/models/synchronization_log.dart';
-import '../../shared/models/in_app_notification.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_type_repository.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
+import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/lucky_pick_repository.dart';
+import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/lucky_pick_service.dart';
+import 'package:my_lucky_lotto_pred/features/notifications/domain/notification_repository.dart';
+import 'package:my_lucky_lotto_pred/features/synchronization/domain/synchronization_repository.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
+import 'package:my_lucky_lotto_pred/shared/models/synchronization_log.dart';
+import 'package:my_lucky_lotto_pred/shared/models/in_app_notification.dart';
 import 'pcso_parser.dart';
 
 class SyncSummary {

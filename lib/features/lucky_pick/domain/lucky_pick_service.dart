@@ -1,5 +1,5 @@
 import 'dart:math';
-import '../../shared/models/lotto_type.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
 
 class LuckyPickService {
   final Random _random = Random.secure();

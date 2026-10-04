@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../authentication/domain/auth_service.dart';
+import 'package:my_lucky_lotto_pred/features/authentication/domain/auth_service.dart';
 import 'admin_dashboard_overview.dart';
-import '../synchronization/presentation/admin_sync_page.dart';
-import '../lotto_results/presentation/admin_results_management_page.dart';
-import '../users/presentation/admin_users_page.dart';
-import '../settings/presentation/admin_settings_page.dart';
-import '../migration/presentation/migration_page.dart';
+import 'package:my_lucky_lotto_pred/features/synchronization/presentation/admin_sync_page.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/presentation/admin_results_management_page.dart';
+import 'package:my_lucky_lotto_pred/features/users/presentation/admin_users_page.dart';
+import 'package:my_lucky_lotto_pred/features/settings/presentation/admin_settings_page.dart';
+import 'package:my_lucky_lotto_pred/features/migration/presentation/migration_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});

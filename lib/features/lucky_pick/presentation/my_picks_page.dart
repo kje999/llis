@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../authentication/domain/auth_service.dart';
-import '../../core/services/text_to_speech_service.dart';
-import '../../shared/models/lucky_pick.dart';
-import '../domain/lucky_pick_repository.dart';
-import '../../shared/widgets/lotto_ball.dart';
+import 'package:my_lucky_lotto_pred/features/authentication/domain/auth_service.dart';
+import 'package:my_lucky_lotto_pred/core/services/text_to_speech_service.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lucky_pick.dart';
+import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/lucky_pick_repository.dart';
+import 'package:my_lucky_lotto_pred/shared/widgets/lotto_ball.dart';
 
 class MyPicksPage extends StatefulWidget {
   const MyPicksPage({super.key});

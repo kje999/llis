@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../lotto_results/domain/lotto_type_repository.dart';
-import '../../lotto_results/domain/lotto_result_repository.dart';
-import '../../shared/models/lotto_type.dart';
-import '../domain/prediction_engine.dart';
-import '../../shared/widgets/statistical_suggestion_card.dart';
-import '../../shared/widgets/lotto_disclaimer_banner.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_type_repository.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
+import 'package:my_lucky_lotto_pred/features/predictions/domain/prediction_engine.dart';
+import 'package:my_lucky_lotto_pred/shared/widgets/statistical_suggestion_card.dart';
+import 'package:my_lucky_lotto_pred/shared/widgets/lotto_disclaimer_banner.dart';
 
 class PredictionsPage extends StatefulWidget {
   const PredictionsPage({super.key});

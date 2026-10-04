@@ -1,5 +1,5 @@
-import '../../../core/database/database_executor.dart';
-import '../../../core/security/password_hasher.dart';
+import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
+import 'package:my_lucky_lotto_pred/core/security/password_hasher.dart';
 
 class MigrationReport {
   final int usersImported;

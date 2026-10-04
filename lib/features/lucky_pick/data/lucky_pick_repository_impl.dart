@@ -1,6 +1,6 @@
-import '../../../core/database/database_executor.dart';
-import '../../../shared/models/lucky_pick.dart';
-import '../domain/lucky_pick_repository.dart';
+import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lucky_pick.dart';
+import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/lucky_pick_repository.dart';
 
 class LuckyPickRepositoryImpl implements LuckyPickRepository {
   final DatabaseExecutor _db;

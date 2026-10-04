@@ -1,6 +1,6 @@
-import '../../../core/database/database_executor.dart';
-import '../../../shared/models/in_app_notification.dart';
-import '../domain/notification_repository.dart';
+import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
+import 'package:my_lucky_lotto_pred/shared/models/in_app_notification.dart';
+import 'package:my_lucky_lotto_pred/features/notifications/domain/notification_repository.dart';
 
 class NotificationRepositoryImpl implements NotificationRepository {
   final DatabaseExecutor _db;

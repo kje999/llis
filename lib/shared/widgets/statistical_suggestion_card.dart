@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/services/text_to_speech_service.dart';
-import '../predictions/domain/prediction_engine.dart';
+import 'package:my_lucky_lotto_pred/core/services/text_to_speech_service.dart';
+import 'package:my_lucky_lotto_pred/features/predictions/domain/prediction_engine.dart';
 import 'lotto_ball.dart';
 
 class StatisticalSuggestionCard extends StatelessWidget {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../authentication/domain/auth_service.dart';
-import '../../notifications/domain/notification_repository.dart';
-import '../../shared/models/in_app_notification.dart';
+import 'package:my_lucky_lotto_pred/features/authentication/domain/auth_service.dart';
+import 'package:my_lucky_lotto_pred/features/notifications/domain/notification_repository.dart';
+import 'package:my_lucky_lotto_pred/shared/models/in_app_notification.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});

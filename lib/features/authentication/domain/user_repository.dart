@@ -1,4 +1,4 @@
-import '../shared/models/user.dart';
+import 'package:my_lucky_lotto_pred/shared/models/user.dart';
 
 abstract class UserRepository {
   Future<List<User>> getAllUsers();

@@ -1,6 +1,6 @@
-import '../../../core/database/database_executor.dart';
-import '../../../shared/models/lotto_result.dart';
-import '../domain/lotto_result_repository.dart';
+import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
 
 class LottoResultRepositoryImpl implements LottoResultRepository {
   final DatabaseExecutor _db;

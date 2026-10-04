@@ -1,6 +1,6 @@
-import '../../../core/database/database_executor.dart';
-import '../../../shared/models/prediction_history.dart';
-import '../domain/prediction_repository.dart';
+import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
+import 'package:my_lucky_lotto_pred/shared/models/prediction_history.dart';
+import 'package:my_lucky_lotto_pred/features/predictions/domain/prediction_repository.dart';
 
 class PredictionRepositoryImpl implements PredictionRepository {
   final DatabaseExecutor _db;

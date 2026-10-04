@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../../lotto_results/domain/lotto_type_repository.dart';
-import '../../lotto_results/domain/lotto_result_repository.dart';
-import '../../shared/models/lotto_type.dart';
-import '../../shared/models/lotto_result.dart';
-import '../../shared/widgets/lotto_ball.dart';
-import '../lucky_pick/domain/lucky_pick_service.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_type_repository.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
+import 'package:my_lucky_lotto_pred/shared/widgets/lotto_ball.dart';
+import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/lucky_pick_service.dart';
 
 class AdminResultsManagementPage extends StatefulWidget {
   const AdminResultsManagementPage({super.key});

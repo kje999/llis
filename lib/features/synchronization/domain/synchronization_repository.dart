@@ -1,4 +1,4 @@
-import '../../../shared/models/synchronization_log.dart';
+import 'package:my_lucky_lotto_pred/shared/models/synchronization_log.dart';
 
 abstract class SynchronizationRepository {
   Future<List<SynchronizationLog>> getAllLogs({int limit = 50});

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../authentication/domain/auth_service.dart';
+import 'package:my_lucky_lotto_pred/features/authentication/domain/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback onNavigateToRegister;

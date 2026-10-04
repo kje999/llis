@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/database/database_executor.dart';
-import '../domain/legacy_mysql_migrator.dart';
+import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
+import 'package:my_lucky_lotto_pred/features/migration/domain/legacy_mysql_migrator.dart';
 
 class MigrationPage extends StatefulWidget {
   const MigrationPage({super.key});

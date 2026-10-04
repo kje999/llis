@@ -1,4 +1,4 @@
-import '../../../shared/models/lotto_result.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
 
 abstract class LottoResultRepository {
   Future<List<LottoResult>> getAll({int limit = 50, int offset = 0, int? lottoTypeId});

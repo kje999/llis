@@ -1,7 +1,7 @@
 import 'dart:math';
-import '../../shared/models/lotto_result.dart';
-import '../../shared/models/lotto_type.dart';
-import '../analytics/domain/analytics_service.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
+import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
+import 'package:my_lucky_lotto_pred/features/analytics/domain/analytics_service.dart';
 
 class StatisticalSuggestion {
   final int rank;
@@ -194,7 +194,7 @@ class PredictionEngine {
     final list = <StatisticalSuggestion>[];
     for (int i = 1; i <= count; i++) {
       final step = (lottoType.maxNumber / 6).floor();
-      final nums = [
+      final nums = <int>[
         1 + (i % 3),
         step + i,
         (step * 2) + i,

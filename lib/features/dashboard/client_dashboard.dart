@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../authentication/domain/auth_service.dart';
-import '../../notifications/domain/notification_repository.dart';
+import 'package:my_lucky_lotto_pred/features/authentication/domain/auth_service.dart';
+import 'package:my_lucky_lotto_pred/features/notifications/domain/notification_repository.dart';
 import 'client_dashboard_overview.dart';
-import '../lucky_pick/presentation/lucky_pick_page.dart';
-import '../lucky_pick/presentation/my_picks_page.dart';
-import '../lotto_results/presentation/lotto_results_page.dart';
-import '../analytics/presentation/analytics_page.dart';
-import '../predictions/presentation/predictions_page.dart';
-import '../notifications/presentation/notifications_page.dart';
+import 'package:my_lucky_lotto_pred/features/lucky_pick/presentation/lucky_pick_page.dart';
+import 'package:my_lucky_lotto_pred/features/lucky_pick/presentation/my_picks_page.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/presentation/lotto_results_page.dart';
+import 'package:my_lucky_lotto_pred/features/analytics/presentation/analytics_page.dart';
+import 'package:my_lucky_lotto_pred/features/predictions/presentation/predictions_page.dart';
+import 'package:my_lucky_lotto_pred/features/notifications/presentation/notifications_page.dart';
 
 class ClientDashboard extends StatefulWidget {
   const ClientDashboard({super.key});

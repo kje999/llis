@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../authentication/domain/user_repository.dart';
-import '../../shared/models/user.dart';
+import 'package:my_lucky_lotto_pred/features/authentication/domain/user_repository.dart';
+import 'package:my_lucky_lotto_pred/shared/models/user.dart';
 
 class AdminUsersPage extends StatefulWidget {
   const AdminUsersPage({super.key});
