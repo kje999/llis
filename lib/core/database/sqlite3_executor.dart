@@ -1,6 +1,11 @@
 import 'package:sqlite3/sqlite3.dart' as sql;
 import 'database_executor.dart';
 
+DatabaseExecutor createNativeDatabase() {
+  final db = sql.sqlite3.openInMemory();
+  return Sqlite3Executor(db);
+}
+
 class Sqlite3Executor implements DatabaseExecutor {
   final sql.Database _db;
 
