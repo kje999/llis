@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
 import 'package:my_lucky_lotto_pred/shared/models/user.dart';
 import 'package:my_lucky_lotto_pred/features/authentication/domain/user_repository.dart';
@@ -30,7 +32,18 @@ class UserRepositoryImpl implements UserRepository {
   @override
   Future<int> insertUser(User user) async {
     final map = user.toMap()..remove('id');
-    return await _db.insert('users', map);
+    final id = await _db.insert('users', map);
+
+    // Sync to backend central SQLite database
+    try {
+      await http.post(
+        Uri.parse('http://localhost:8081/api/users/sync'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(user.toMap()),
+      ).timeout(const Duration(seconds: 2));
+    } catch (_) {}
+
+    return id;
   }
 
   @override

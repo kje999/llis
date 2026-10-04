@@ -132,7 +132,93 @@ app.post('/api/sync/clear', (req, res) => {
   }
 });
 
-// 7. View sync history
+// 7. Sync & Persist User Accounts directly in Central SQLite DB
+app.post('/api/users/sync', (req, res) => {
+  try {
+    const user = req.body;
+    if (!user || !user.username) {
+      return res.status(400).json({ error: 'Invalid user payload' });
+    }
+    const stmt = db.prepare(`
+      INSERT INTO users (username, password_hash, role, full_name, email, is_active)
+      VALUES (@username, @password_hash, @role, @full_name, @email, @is_active)
+      ON CONFLICT(username) DO UPDATE SET
+        password_hash = excluded.password_hash,
+        role = excluded.role,
+        full_name = excluded.full_name,
+        email = excluded.email,
+        is_active = excluded.is_active,
+        updated_at = CURRENT_TIMESTAMP
+    `);
+    stmt.run({
+      username: user.username,
+      password_hash: user.password_hash || '',
+      role: user.role || 'CLIENT',
+      full_name: user.full_name || user.username,
+      email: user.email || '',
+      is_active: user.is_active !== undefined ? (user.is_active ? 1 : 0) : 1,
+    });
+    addLog(`[User Sync] User "${user.username}" saved into central SQLite database.`);
+    res.json({ status: 'SUCCESS', username: user.username });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 8. Fetch all users from Central SQLite DB
+app.get('/api/users', (req, res) => {
+  const users = db.prepare('SELECT id, username, password_hash, role, full_name, email, is_active, created_at, updated_at FROM users').all();
+  res.json(users);
+});
+
+// 9. Sync & Persist Lucky Picks directly in Central SQLite DB
+app.post('/api/picks/sync', (req, res) => {
+  try {
+    const pick = req.body;
+    if (!pick || !pick.user_id || !pick.numbers) {
+      return res.status(400).json({ error: 'Invalid lucky pick payload' });
+    }
+    const nums = Array.isArray(pick.numbers) ? pick.numbers : pick.numbers.toString().split('-').map(Number);
+    const stmt = db.prepare(`
+      INSERT INTO lucky_picks (user_id, lotto_type_id, draw_date, number_1, number_2, number_3, number_4, number_5, number_6, is_checked, match_count, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const info = stmt.run(
+      pick.user_id,
+      pick.lotto_type_id || 1,
+      pick.draw_date,
+      nums[0] || 0,
+      nums[1] || 0,
+      nums[2] || 0,
+      nums[3] || 0,
+      nums[4] || 0,
+      nums[5] || 0,
+      pick.is_checked ? 1 : 0,
+      pick.match_count || 0,
+      pick.status || 'PENDING'
+    );
+    addLog(`[Lucky Pick Sync] Saved pick for user ID ${pick.user_id} (${pick.draw_date}) into central SQLite DB.`);
+    res.json({ status: 'SUCCESS', id: info.lastInsertRowid });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 10. Fetch user's Lucky Picks from Central SQLite DB
+app.get('/api/picks', (req, res) => {
+  const { userId } = req.query;
+  let query = 'SELECT * FROM lucky_picks';
+  const params = [];
+  if (userId) {
+    query += ' WHERE user_id = ?';
+    params.push(userId);
+  }
+  query += ' ORDER BY id DESC';
+  const picks = db.prepare(query).all(...params);
+  res.json(picks);
+});
+
+// 11. View sync history
 app.get('/api/sync/history', (req, res) => {
   const history = db.prepare('SELECT * FROM sync_history ORDER BY id DESC LIMIT 20').all();
   res.json(history);

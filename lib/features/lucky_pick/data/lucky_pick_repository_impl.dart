@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
 import 'package:my_lucky_lotto_pred/shared/models/lucky_pick.dart';
 import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/lucky_pick_repository.dart';
@@ -35,7 +37,26 @@ class LuckyPickRepositoryImpl implements LuckyPickRepository {
   @override
   Future<int> insert(LuckyPick pick) async {
     final map = pick.toMap()..remove('id');
-    return await _db.insert('lucky_picks', map);
+    final id = await _db.insert('lucky_picks', map);
+
+    // Sync to backend central SQLite database
+    try {
+      await http.post(
+        Uri.parse('http://localhost:8081/api/picks/sync'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': pick.userId,
+          'lotto_type_id': pick.lottoTypeId,
+          'draw_date': pick.drawDate,
+          'numbers': pick.numbers,
+          'is_checked': pick.isChecked,
+          'match_count': pick.matchCount,
+          'status': pick.status,
+        }),
+      ).timeout(const Duration(seconds: 2));
+    } catch (_) {}
+
+    return id;
   }
 
   @override
