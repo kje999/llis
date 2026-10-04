@@ -48,9 +48,16 @@ class _PredictionsPageState extends State<PredictionsPage> {
     setState(() => _isLoading = true);
 
     final resultRepo = context.read<LottoResultRepository>();
-    final now = DateTime.now();
-    final oneYearAgo = now.subtract(const Duration(days: 365)).toIso8601String().substring(0, 10);
-    final today = now.toIso8601String().substring(0, 10);
+    final latestDraw = await resultRepo.getLatestByTypeId(_selectedType!.id);
+    DateTime referenceDate = DateTime.now();
+    if (latestDraw != null) {
+      final parsed = DateTime.tryParse(latestDraw.drawDate);
+      if (parsed != null && parsed.isAfter(referenceDate)) {
+        referenceDate = parsed;
+      }
+    }
+    final oneYearAgo = referenceDate.subtract(const Duration(days: 365)).toIso8601String().substring(0, 10);
+    final today = referenceDate.add(const Duration(days: 1)).toIso8601String().substring(0, 10);
 
     final historicalDraws = await resultRepo.getByDateRange(
       lottoTypeId: _selectedType!.id,

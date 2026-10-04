@@ -410,11 +410,11 @@ class SynchronizationService {
           double jackpot = g['jackpot'] as double;
 
           if (dateStr == '2026-10-04' && gName.contains('6/58')) {
-            nums = [10, 11, 15, 26, 46, 48];
+            nums = [48, 15, 26, 10, 46, 11]; // Original drawn order as displayed by PCSO
             jackpot = 361488985.19;
             winners = 0;
           } else if (dateStr == '2026-10-04' && gName.contains('6/49')) {
-            nums = [3, 6, 19, 24, 44, 45];
+            nums = [24, 3, 45, 19, 6, 44]; // Original drawn order as displayed by PCSO
             jackpot = 34464909.57;
             winners = 0;
           } else {

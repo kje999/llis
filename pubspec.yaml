@@ -41,6 +41,7 @@ dependencies:
   html: ^0.15.4
   flutter_tts: ^4.2.0
   sqlite3: ^3.5.2
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

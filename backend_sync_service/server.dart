@@ -146,11 +146,11 @@ List<Map<String, dynamic>> _generateRangeResults({
         double jackpot = g['jackpot'] as double;
 
         if (dateStr == '2026-10-04' && gName.contains('6/58')) {
-          nums = [10, 11, 15, 26, 46, 48];
+          nums = [48, 15, 26, 10, 46, 11];
           jackpot = 361488985.19;
           winners = 0;
         } else if (dateStr == '2026-10-04' && gName.contains('6/49')) {
-          nums = [3, 6, 19, 24, 44, 45];
+          nums = [24, 3, 45, 19, 6, 44];
           jackpot = 34464909.57;
           winners = 0;
         } else {
@@ -161,7 +161,7 @@ List<Map<String, dynamic>> _generateRangeResults({
             seed = (seed * 9301 + 49297) % 233280;
             set.add(1 + (seed % maxNum));
           }
-          nums = set.toList()..sort();
+          nums = set.toList();
           winners = (seed % 100 == 0) ? 1 : 0;
         }
 

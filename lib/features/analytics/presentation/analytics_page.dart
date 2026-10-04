@@ -60,9 +60,18 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     if (_selectedPeriod == 'Last 90 Days') days = 90;
     if (_selectedPeriod == 'Last 6 Months') days = 180;
 
-    final now = DateTime.now();
-    final startDate = now.subtract(Duration(days: days)).toIso8601String().substring(0, 10);
-    final endDate = now.toIso8601String().substring(0, 10);
+    // Use latest recorded draw date as reference point if available, else DateTime.now()
+    final latestDraw = await resultRepo.getLatestByTypeId(_selectedType!.id);
+    DateTime referenceDate = DateTime.now();
+    if (latestDraw != null) {
+      final parsed = DateTime.tryParse(latestDraw.drawDate);
+      if (parsed != null && parsed.isAfter(referenceDate)) {
+        referenceDate = parsed;
+      }
+    }
+
+    final startDate = referenceDate.subtract(Duration(days: days)).toIso8601String().substring(0, 10);
+    final endDate = referenceDate.add(const Duration(days: 1)).toIso8601String().substring(0, 10);
 
     final draws = await resultRepo.getByDateRange(
       lottoTypeId: _selectedType!.id,

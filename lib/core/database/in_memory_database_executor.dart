@@ -1,12 +1,44 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'database_executor.dart';
 
 class InMemoryDatabaseExecutor implements DatabaseExecutor {
   final Map<String, List<Map<String, dynamic>>> _tables = {};
   int _lastId = 100;
+  bool _isLoaded = false;
+
+  /// Loads persisted tables from browser localStorage / SharedPreferences
+  Future<void> init() async {
+    if (_isLoaded) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedData = prefs.getString('llis_web_database_tables');
+      if (savedData != null && savedData.isNotEmpty) {
+        final decoded = jsonDecode(savedData) as Map<String, dynamic>;
+        for (final entry in decoded.entries) {
+          if (entry.value is List) {
+            _tables[entry.key] = List<Map<String, dynamic>>.from(
+              (entry.value as List).map((item) => Map<String, dynamic>.from(item as Map)),
+            );
+          }
+        }
+      }
+    } catch (_) {}
+    _isLoaded = true;
+  }
+
+  /// Persists current tables to browser storage
+  Future<void> _persist() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final encoded = jsonEncode(_tables);
+      await prefs.setString('llis_web_database_tables', encoded);
+    } catch (_) {}
+  }
 
   @override
   Future<void> execute(String sql, [List<Object?> parameters = const []]) async {
-    // Basic table tracker for DDL
+    await init();
     final trimmed = sql.trim().toUpperCase();
     if (trimmed.startsWith('CREATE TABLE')) {
       final parts = sql.split(RegExp(r'\s+'));
@@ -14,11 +46,19 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
         final tableName = parts[2].replaceAll('(', '').replaceAll('"', '').replaceAll('`', '');
         _tables.putIfAbsent(tableName, () => []);
       }
+    } else if (trimmed.startsWith('DELETE FROM')) {
+      final parts = sql.split(RegExp(r'\s+'));
+      if (parts.length >= 3) {
+        final tableName = parts[2].replaceAll(';', '').trim();
+        _tables[tableName]?.clear();
+        await _persist();
+      }
     }
   }
 
   @override
   Future<List<Map<String, dynamic>>> query(String sql, [List<Object?> parameters = const []]) async {
+    await init();
     final cleanSql = sql.replaceAll('\n', ' ').trim();
 
     // Handle COUNT(*) queries
@@ -238,6 +278,7 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
 
   @override
   Future<int> insert(String table, Map<String, dynamic> values) async {
+    await init();
     _tables.putIfAbsent(table, () => []);
     final record = Map<String, dynamic>.from(values);
     _lastId++;
@@ -245,11 +286,13 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
       record['id'] = _lastId;
     }
     _tables[table]!.add(record);
+    await _persist();
     return record['id'] as int;
   }
 
   @override
   Future<int> update(String table, Map<String, dynamic> values, {String? where, List<Object?>? whereArgs}) async {
+    await init();
     final list = _tables[table] ?? [];
     int count = 0;
     for (final item in list) {
@@ -263,11 +306,15 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
         count++;
       }
     }
+    if (count > 0) {
+      await _persist();
+    }
     return count;
   }
 
   @override
   Future<int> delete(String table, {String? where, List<Object?>? whereArgs}) async {
+    await init();
     final list = _tables[table] ?? [];
     final initialLength = list.length;
     if (where != null && where.contains('id = ?') && whereArgs != null && whereArgs.isNotEmpty) {
@@ -275,11 +322,12 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
     } else {
       list.clear();
     }
+    await _persist();
     return initialLength - list.length;
   }
 
   @override
   Future<void> close() async {
-    _tables.clear();
+    // Keep tables persisted; do not wipe on session close
   }
 }

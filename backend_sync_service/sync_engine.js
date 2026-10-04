@@ -28,13 +28,13 @@ export function generateOneYearPcsoSchedule(startDate, endDate) {
         let winners = 0;
         let jackpot = g.jackpot;
 
-        // Exact official recorded draw for 2026-10-04
+        // Exact official recorded draw for 2026-10-04 in original drawn sequence
         if (dateStr === '2026-10-04' && g.code === 'ULTRA_6_58') {
-          numbers = '10-11-15-26-46-48';
+          numbers = '48-15-26-10-46-11'; // Original drawn sequence from official PCSO draw
           jackpot = 361488985.19;
           winners = 0;
         } else if (dateStr === '2026-10-04' && g.code === 'SUPER_6_49') {
-          numbers = '03-06-19-24-44-45';
+          numbers = '24-03-45-19-06-44'; // Original drawn sequence from official PCSO draw
           jackpot = 34464909.57;
           winners = 0;
         } else {
