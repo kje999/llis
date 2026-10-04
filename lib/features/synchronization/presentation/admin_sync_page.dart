@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 import 'package:my_lucky_lotto_pred/features/synchronization/domain/synchronization_service.dart';
 import 'package:my_lucky_lotto_pred/features/synchronization/domain/synchronization_repository.dart';
 import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
@@ -30,8 +32,13 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
   SyncSummary? _lastSummary;
   List<SynchronizationLog> _logs = [];
   List<LottoResult> _scrapedResultsPreview = [];
+  int _totalStoredCount = 0;
+  int _currentPage = 1;
+  int _pageSize = 25;
   bool _showHtmlPaste = false;
   final TextEditingController _htmlPasteController = TextEditingController();
+  List<String> _backendConsoleLogs = [];
+  bool _isLoadingBackendLogs = false;
 
   static const List<String> _months = [
     'January',
@@ -72,13 +79,37 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
     _toDay = now.day;
     _loadLogs();
     _loadExistingDraws();
+    _fetchBackendLogs();
+  }
+
+  Future<void> _fetchBackendLogs() async {
+    try {
+      final res = await http.get(Uri.parse('http://localhost:8081/api/sync/logs')).timeout(const Duration(seconds: 2));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['logs'] is List) {
+          if (mounted) {
+            setState(() {
+              _backendConsoleLogs = List<String>.from(data['logs']);
+            });
+          }
+        }
+      }
+    } catch (_) {
+      // Backend service might not be running or is loading
+    }
   }
 
   Future<void> _loadExistingDraws() async {
     final resultRepo = context.read<LottoResultRepository>();
-    final recentDraws = await resultRepo.getAll(limit: 30, offset: 0);
+    final total = await resultRepo.getTotalCount();
+    final offset = (_currentPage - 1) * _pageSize;
+    final draws = await resultRepo.getAll(limit: _pageSize, offset: offset);
     if (mounted) {
-      setState(() => _scrapedResultsPreview = recentDraws);
+      setState(() {
+        _totalStoredCount = total;
+        _scrapedResultsPreview = draws;
+      });
     }
   }
 
@@ -120,7 +151,6 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
     });
 
     final service = context.read<SynchronizationService>();
-    final resultRepo = context.read<LottoResultRepository>();
 
     final summary = await service.synchronize(
       fromDate: _fromDate,
@@ -132,16 +162,75 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
           : null,
     );
 
-    // Fetch the updated results for preview in the table
-    final recentDraws = await resultRepo.getAll(limit: 30, offset: 0);
-
     if (mounted) {
       setState(() {
         _isSyncing = false;
         _lastSummary = summary;
-        _scrapedResultsPreview = recentDraws;
+        _currentPage = 1; // Reset to first page
       });
+      await _loadExistingDraws();
       await _loadLogs();
+      await _fetchBackendLogs();
+    }
+  }
+
+  Future<void> _confirmClearAllResults() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Clear All Results?'),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to delete all official lotto draw results from the database?\n\nThis will clear your local results and reset the central synchronization cache. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Clear All Results'),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      setState(() => _isSyncing = true);
+      final resultRepo = context.read<LottoResultRepository>();
+      await resultRepo.deleteAll();
+
+      // Also tell backend service to clear central cache if active
+      try {
+        await http.post(Uri.parse('http://localhost:8081/api/sync/clear')).timeout(const Duration(seconds: 2));
+      } catch (_) {}
+
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+          _scrapedResultsPreview = [];
+          _totalStoredCount = 0;
+          _currentPage = 1;
+          _lastSummary = null;
+        });
+        await _fetchBackendLogs();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All official lotto draw results have been cleared successfully.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -490,40 +579,68 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Search Lotto Button (blue button matching PCSO)
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E3A8A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 28,
-                        vertical: 14,
+                  // Action Buttons Row: Search & Clear
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 10,
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E3A8A),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 28,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 2,
+                        ),
+                        icon: _isSyncing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.search, size: 20),
+                        label: Text(
+                          _isSyncing
+                              ? 'SCRAPING & SYNCHRONIZING...'
+                              : 'SEARCH & SCRAPE PCSO',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        onPressed: _isSyncing ? null : _runSync,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red.shade700,
+                          side: BorderSide(color: Colors.red.shade400),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 22,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(Icons.delete_sweep_outlined, size: 20),
+                        label: const Text(
+                          'CLEAR ALL RESULTS',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        onPressed: _isSyncing ? null : _confirmClearAllResults,
                       ),
-                      elevation: 2,
-                    ),
-                    icon: _isSyncing
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(Icons.search, size: 20),
-                    label: Text(
-                      _isSyncing
-                          ? 'SCRAPING & SYNCHRONIZING...'
-                          : 'SEARCH & SCRAPE PCSO',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    onPressed: _isSyncing ? null : _runSync,
+                    ],
                   ),
 
                   // Sync Summary Feedback
@@ -609,6 +726,86 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                       ),
                     ),
                   ],
+
+                  // Live Backend Worker Console Stream
+                  const SizedBox(height: 20),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF334155)),
+                    ),
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.terminal, color: Color(0xFF38BDF8), size: 18),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Backend Synchronization Worker Terminal (Port 8081)',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.refresh, color: Colors.white70, size: 16),
+                              tooltip: 'Refresh Terminal Output',
+                              onPressed: _fetchBackendLogs,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
+                        ),
+                        const Divider(color: Color(0xFF334155), height: 16),
+                        Container(
+                          constraints: const BoxConstraints(maxHeight: 140),
+                          child: _backendConsoleLogs.isEmpty
+                              ? const Text(
+                                  '[INFO] Waiting for backend worker activity... (Start via run_backend_sync.bat or click SEARCH & SCRAPE PCSO)',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 11,
+                                    fontFamily: 'monospace',
+                                  ),
+                                )
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: _backendConsoleLogs.length,
+                                  itemBuilder: (context, idx) {
+                                    final log = _backendConsoleLogs[idx];
+                                    final isError = log.contains('ERROR') || log.contains('403');
+                                    final isSuccess = log.contains('SUCCESS') || log.contains('Complete') || log.contains('ready');
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 1.5),
+                                      child: Text(
+                                        log,
+                                        style: TextStyle(
+                                          color: isError
+                                              ? const Color(0xFFF87171)
+                                              : isSuccess
+                                                  ? const Color(0xFF4ADE80)
+                                                  : const Color(0xFF94A3B8),
+                                          fontSize: 11,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -629,21 +826,62 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Search Results',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E3A8A),
-                        ),
+                      Row(
+                        children: [
+                          const Text(
+                            'Search Results',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E3A8A),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Text(
+                              '$_totalStoredCount Total Synchronized Draw(s)',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF1D4ED8),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Total Stored: ${_scrapedResultsPreview.length} recent draw(s)',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.blueGrey,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        children: [
+                          const Text(
+                            'Rows per page: ',
+                            style: TextStyle(fontSize: 12, color: Colors.blueGrey),
+                          ),
+                          DropdownButton<int>(
+                            value: _pageSize,
+                            underline: const SizedBox(),
+                            isDense: true,
+                            items: [20, 25, 50, 100].map((int val) {
+                              return DropdownMenuItem<int>(
+                                value: val,
+                                child: Text('$val', style: const TextStyle(fontSize: 12)),
+                              );
+                            }).toList(),
+                            onChanged: (newSize) {
+                              if (newSize != null) {
+                                setState(() {
+                                  _pageSize = newSize;
+                                  _currentPage = 1;
+                                });
+                                _loadExistingDraws();
+                              }
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -767,6 +1005,55 @@ class _AdminSyncPageState extends State<AdminSyncPage> {
                         }).toList(),
                       ),
                     ),
+                  if (_scrapedResultsPreview.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Showing ${((_currentPage - 1) * _pageSize) + 1} to ${((_currentPage - 1) * _pageSize) + _scrapedResultsPreview.length} of $_totalStoredCount draws',
+                          style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
+                        ),
+                        Row(
+                          children: [
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.chevron_left, size: 16),
+                              label: const Text('Previous', style: TextStyle(fontSize: 12)),
+                              onPressed: _currentPage > 1
+                                  ? () {
+                                      setState(() => _currentPage--);
+                                      _loadExistingDraws();
+                                    }
+                                  : null,
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E3A8A),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Page $_currentPage of ${(_totalStoredCount / _pageSize).ceil() == 0 ? 1 : (_totalStoredCount / _pageSize).ceil()}',
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              label: const Text('Next', style: TextStyle(fontSize: 12)),
+                              icon: const Icon(Icons.chevron_right, size: 16),
+                              onPressed: (_currentPage * _pageSize) < _totalStoredCount
+                                  ? () {
+                                      setState(() => _currentPage++);
+                                      _loadExistingDraws();
+                                    }
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

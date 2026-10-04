@@ -9,6 +9,7 @@ abstract class LottoResultRepository {
   Future<int> insert(LottoResult result);
   Future<void> update(LottoResult result);
   Future<void> delete(int id);
+  Future<void> deleteAll();
   Future<int> getTotalCount({int? lottoTypeId});
   Future<int> getCountThisYear();
 }

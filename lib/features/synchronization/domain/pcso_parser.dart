@@ -51,7 +51,8 @@ class PcsoParser {
     // Verify exactly 6 unique numbers
     if (numbers.toSet().length != 6) return null;
 
-    return numbers..sort();
+    // Preserve original scraped order as drawn (do not force sort ascending)
+    return numbers;
   }
 
   /// Parses jackpot prize string like "49,500,000.00" or "₱49,500,000"

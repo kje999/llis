@@ -105,6 +105,11 @@ class LottoResultRepositoryImpl implements LottoResultRepository {
   }
 
   @override
+  Future<void> deleteAll() async {
+    await _db.execute('DELETE FROM lotto_results');
+  }
+
+  @override
   Future<int> getTotalCount({int? lottoTypeId}) async {
     String sql = 'SELECT COUNT(*) as count FROM lotto_results';
     final params = <Object?>[];

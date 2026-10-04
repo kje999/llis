@@ -87,6 +87,7 @@ class SynchronizationService {
             queryParameters: {
               'startDate': DateFormat('yyyy-MM-dd').format(targetStart),
               'endDate': DateFormat('yyyy-MM-dd').format(targetEnd),
+              'limit': '1000',
               if (selectedGameCode != null && selectedGameCode != 'ALL')
                 'game': selectedGameCode,
             },
@@ -425,7 +426,7 @@ class SynchronizationService {
               seed = (seed * 9301 + 49297) % 233280;
               set.add(1 + (seed % maxNum));
             }
-            nums = set.toList()..sort();
+            nums = set.toList(); // Preserve original drawn order without sorting
             winners = (seed % 97 == 0) ? 1 : 0;
             jackpot = (g['jackpot'] as double) + ((seed % 40) * 1000000.0);
           }
