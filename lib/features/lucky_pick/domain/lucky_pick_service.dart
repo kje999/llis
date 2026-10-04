@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
+import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/pcso_game_rule_service.dart';
 
 class LuckyPickService {
   final Random _random = Random.secure();
@@ -61,5 +62,20 @@ class LuckyPickService {
     } else {
       return 'NOT_WINNING';
     }
+  }
+
+  /// Evaluates user pick against official draw result and returns full PCSO prize breakdown
+  PcsoPrizeResult evaluatePick({
+    required String gameCode,
+    required List<int> pickNumbers,
+    required List<int> officialNumbers,
+    double jackpotPrize = 0.0,
+  }) {
+    return PcsoGameRuleService.calculatePrize(
+      gameCode: gameCode,
+      userNumbers: pickNumbers,
+      officialNumbers: officialNumbers,
+      jackpotPrize: jackpotPrize,
+    );
   }
 }

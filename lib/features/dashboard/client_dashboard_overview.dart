@@ -83,6 +83,64 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
           const SizedBox(height: 16),
           const LottoDisclaimerBanner(),
           const SizedBox(height: 16),
+          // PCSO Draw Schedule Quick Reminder Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1E3A8A), Color(0xFF1E40AF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF1E3A8A).withValues(alpha: 0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.access_time_filled, color: Color(0xFFFFB300), size: 22),
+                    SizedBox(width: 8),
+                    Text(
+                      'Official PCSO Draw Schedule & Days (All Major 6-Number Games)',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildGameScheduleChip('Ultra 6/58', 'Sun • Tue • Fri', '₱49.5M+'),
+                    _buildGameScheduleChip('Grand 6/55', 'Mon • Wed • Sat', '₱29.7M+'),
+                    _buildGameScheduleChip('Super 6/49', 'Sun • Tue • Thu', '₱15.8M+'),
+                    _buildGameScheduleChip('Mega 6/45', 'Mon • Wed • Fri', '₱8.9M+'),
+                    _buildGameScheduleChip('Lotto 6/42', 'Tue • Thu • Sat', '₱5.9M+'),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.white70, size: 14),
+                    SizedBox(width: 6),
+                    Text(
+                      'All official PCSO 6-digit draws occur at 9:00 PM PHT. Minimum 3 matching numbers win official prizes.',
+                      style: TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
           // Action Cards Grid
           LayoutBuilder(
             builder: (context, constraints) {
@@ -206,6 +264,37 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildGameScheduleChip(String title, String days, String minJackpot) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(color: const Color(0xFFFFB300), borderRadius: BorderRadius.circular(4)),
+                child: Text(minJackpot, style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(days, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+        ],
       ),
     );
   }

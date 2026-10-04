@@ -4,6 +4,8 @@ import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_type_rep
 import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
 import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
 import 'package:my_lucky_lotto_pred/features/predictions/domain/prediction_engine.dart';
+import 'package:intl/intl.dart';
+import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/pcso_game_rule_service.dart';
 import 'package:my_lucky_lotto_pred/shared/widgets/statistical_suggestion_card.dart';
 import 'package:my_lucky_lotto_pred/shared/widgets/lotto_disclaimer_banner.dart';
 
@@ -118,6 +120,52 @@ class _PredictionsPageState extends State<PredictionsPage> {
                     }).toList(),
                   ),
                   const SizedBox(height: 16),
+                  if (_selectedType != null) ...[
+                    Builder(
+                      builder: (context) {
+                        final schedule = PcsoGameRuleService.getSchedule(_selectedType!.code);
+                        final nextDraw = schedule?.getNextDrawDate();
+                        final prizes = PcsoGameRuleService.prizeTiers[_selectedType!.code] ?? [];
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.alarm_on, color: Color(0xFF1E3A8A), size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Draw Reminder: ${schedule?.drawDaysText ?? ''} at 9:00 PM PHT',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A)),
+                                  ),
+                                ],
+                              ),
+                              if (nextDraw != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Next official draw will be on ${DateFormat('EEEE, MMMM d, yyyy').format(nextDraw)}.',
+                                  style: TextStyle(fontSize: 12, color: Colors.blue.shade900, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                              const SizedBox(height: 6),
+                              Text(
+                                'Winning Prize Categories: ${prizes.map((p) => '${p.tierName} (${p.matchCount}/6 matches)').join(' • ')}',
+                                style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade800),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1E3A8A),

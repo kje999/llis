@@ -1,0 +1,3 @@
+Role	Username	Password
+Administrator	ADMIN	ADMIN
+Client	kenth	password123

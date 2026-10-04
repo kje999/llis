@@ -6,6 +6,7 @@ import 'package:my_lucky_lotto_pred/features/analytics/domain/analytics_service.
 import 'package:my_lucky_lotto_pred/features/predictions/domain/prediction_engine.dart';
 import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
 import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
+import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/pcso_game_rule_service.dart';
 
 void main() {
   group('LuckyPickService Tests', () {
@@ -167,6 +168,76 @@ void main() {
         }
         expect(s.explanationPoints.isNotEmpty, isTrue);
       }
+    });
+  });
+
+  group('PcsoGameRuleService & Prize Category Tests', () {
+    test('provides accurate PCSO draw schedules and day detection', () {
+      final ultraSched = PcsoGameRuleService.getSchedule('ULTRA_6_58')!;
+      expect(ultraSched.drawDaysOfWeek, contains(DateTime.sunday));
+      expect(ultraSched.drawDaysOfWeek, contains(DateTime.tuesday));
+      expect(ultraSched.drawDaysOfWeek, contains(DateTime.friday));
+
+      final lotto42Sched = PcsoGameRuleService.getSchedule('LOTTO_6_42')!;
+      expect(lotto42Sched.drawDaysOfWeek, contains(DateTime.tuesday));
+      expect(lotto42Sched.drawDaysOfWeek, contains(DateTime.thursday));
+      expect(lotto42Sched.drawDaysOfWeek, contains(DateTime.saturday));
+
+      final nextDraw = ultraSched.getNextDrawDate();
+      expect(ultraSched.isDrawDay(nextDraw), isTrue);
+    });
+
+    test('calculates correct official PCSO prize categories and amounts', () {
+      // 6/6 Jackpot
+      final res6 = PcsoGameRuleService.calculatePrize(
+        gameCode: 'ULTRA_6_58',
+        userNumbers: [4, 12, 19, 27, 34, 58],
+        officialNumbers: [4, 12, 19, 27, 34, 58],
+        jackpotPrize: 55000000.0,
+      );
+      expect(res6.matchCount, equals(6));
+      expect(res6.isWinning, isTrue);
+      expect(res6.tierName, contains('Jackpot'));
+      expect(res6.estimatedOrJackpotAmount, equals(55000000.0));
+
+      // 5/6 2nd Prize
+      final res5 = PcsoGameRuleService.calculatePrize(
+        gameCode: 'ULTRA_6_58',
+        userNumbers: [4, 12, 19, 27, 34, 58],
+        officialNumbers: [4, 12, 19, 27, 34, 1],
+      );
+      expect(res5.matchCount, equals(5));
+      expect(res5.isWinning, isTrue);
+      expect(res5.tierName, equals('2nd Prize'));
+
+      // 4/6 3rd Prize
+      final res4 = PcsoGameRuleService.calculatePrize(
+        gameCode: 'LOTTO_6_42',
+        userNumbers: [2, 8, 15, 23, 31, 40],
+        officialNumbers: [2, 8, 15, 23, 1, 3],
+      );
+      expect(res4.matchCount, equals(4));
+      expect(res4.isWinning, isTrue);
+      expect(res4.tierName, equals('3rd Prize'));
+
+      // 3/6 4th Prize (Fixed)
+      final res3 = PcsoGameRuleService.calculatePrize(
+        gameCode: 'SUPER_6_49',
+        userNumbers: [3, 11, 17, 26, 38, 45],
+        officialNumbers: [3, 11, 17, 1, 2, 4],
+      );
+      expect(res3.matchCount, equals(3));
+      expect(res3.isWinning, isTrue);
+      expect(res3.estimatedOrJackpotAmount, equals(50.0)); // Fixed ₱50 for Super 6/49
+
+      // 2/6 No Prize
+      final res2 = PcsoGameRuleService.calculatePrize(
+        gameCode: 'MEGA_6_45',
+        userNumbers: [4, 9, 16, 27, 34, 42],
+        officialNumbers: [4, 9, 1, 2, 3, 5],
+      );
+      expect(res2.matchCount, equals(2));
+      expect(res2.isWinning, isFalse);
     });
   });
 }

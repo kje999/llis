@@ -49,6 +49,19 @@ class StatisticalSuggestionCard extends StatelessWidget {
                       lottoTypeName,
                       style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 13),
                     ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Text(
+                        suggestion.strategyProfile,
+                        style: TextStyle(fontSize: 11, color: Colors.blue.shade900, fontWeight: FontWeight.w500),
+                      ),
+                    ),
                   ],
                 ),
                 IconButton(

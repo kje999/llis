@@ -10,7 +10,7 @@ class LuckyPickRepositoryImpl implements LuckyPickRepository {
   @override
   Future<List<LuckyPick>> getByUserId(int userId) async {
     const sql = '''
-      SELECT p.*, t.name as lotto_type_name
+      SELECT p.*, t.name as lotto_type_name, t.code as lotto_type_code
       FROM lucky_picks p
       JOIN lotto_types t ON p.lotto_type_id = t.id
       WHERE p.user_id = ?
@@ -23,7 +23,7 @@ class LuckyPickRepositoryImpl implements LuckyPickRepository {
   @override
   Future<List<LuckyPick>> getUncheckedPicks(int lottoTypeId, String drawDate) async {
     const sql = '''
-      SELECT p.*, t.name as lotto_type_name
+      SELECT p.*, t.name as lotto_type_name, t.code as lotto_type_code
       FROM lucky_picks p
       JOIN lotto_types t ON p.lotto_type_id = t.id
       WHERE p.lotto_type_id = ? AND p.draw_date = ? AND p.is_checked = 0

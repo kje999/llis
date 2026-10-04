@@ -14,6 +14,7 @@ class LuckyPick {
   final int matchCount;
   final String status; // 'PENDING', 'NOT_WINNING', 'PARTIAL_MATCH', 'WINNER'
   final String? lottoTypeName;
+  final String? lottoTypeCode;
 
   LuckyPick({
     required this.id,
@@ -31,6 +32,7 @@ class LuckyPick {
     this.matchCount = 0,
     this.status = 'PENDING',
     this.lottoTypeName,
+    this.lottoTypeCode,
   });
 
   List<int> get numbers => [number1, number2, number3, number4, number5, number6];
@@ -56,6 +58,7 @@ class LuckyPick {
       matchCount: matchCount ?? this.matchCount,
       status: status ?? this.status,
       lottoTypeName: lottoTypeName,
+      lottoTypeCode: lottoTypeCode,
     );
   }
 
@@ -76,6 +79,7 @@ class LuckyPick {
       matchCount: map['match_count'] as int? ?? 0,
       status: map['status'] as String? ?? 'PENDING',
       lottoTypeName: map['lotto_type_name'] as String?,
+      lottoTypeCode: map['lotto_type_code'] as String?,
     );
   }
 

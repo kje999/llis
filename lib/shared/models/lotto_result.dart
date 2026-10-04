@@ -39,6 +39,8 @@ class LottoResult {
 
   List<int> get numbers => [number1, number2, number3, number4, number5, number6];
 
+  String get formattedNumbers => numbers.map((n) => n.toString().padLeft(2, '0')).join(' - ');
+
   String get formattedJackpot {
     final formatter = NumberFormat.currency(locale: 'en_PH', symbol: '₱', decimalDigits: 2);
     return formatter.format(jackpotPrize);
