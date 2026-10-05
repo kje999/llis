@@ -333,8 +333,14 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
     final list = _tables[table] ?? [];
     int count = 0;
     for (final item in list) {
-      if (where != null && where.contains('id = ?') && whereArgs != null && whereArgs.isNotEmpty) {
-        if (item['id'] == whereArgs.first) {
+      if (where != null && whereArgs != null && whereArgs.isNotEmpty) {
+        bool match = false;
+        if (where.contains('id = ?')) {
+          match = item['id']?.toString() == whereArgs.first?.toString();
+        } else if (where.toLowerCase().contains('username') && where.contains('?')) {
+          match = (item['username']?.toString().toLowerCase().trim() ?? '') == whereArgs.first?.toString().toLowerCase().trim();
+        }
+        if (match) {
           item.addAll(values);
           count++;
         }
@@ -355,7 +361,9 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
     final list = _tables[table] ?? [];
     final initialLength = list.length;
     if (where != null && where.contains('id = ?') && whereArgs != null && whereArgs.isNotEmpty) {
-      list.removeWhere((item) => item['id'] == whereArgs.first);
+      list.removeWhere((item) => item['id']?.toString() == whereArgs.first?.toString());
+    } else if (where != null && where.toLowerCase().contains('username') && whereArgs != null && whereArgs.isNotEmpty) {
+      list.removeWhere((item) => (item['username']?.toString().toLowerCase().trim() ?? '') == whereArgs.first?.toString().toLowerCase().trim());
     } else {
       list.clear();
     }

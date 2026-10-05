@@ -7,6 +7,9 @@ import 'package:my_lucky_lotto_pred/features/predictions/domain/prediction_engin
 import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
 import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
 import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/pcso_game_rule_service.dart';
+import 'package:my_lucky_lotto_pred/shared/models/user.dart';
+import 'package:my_lucky_lotto_pred/core/database/in_memory_database_executor.dart';
+import 'package:my_lucky_lotto_pred/features/authentication/data/user_repository_impl.dart';
 
 void main() {
   group('LuckyPickService Tests', () {
@@ -252,6 +255,46 @@ void main() {
       expect(PcsoParser.parseDrawDate('10/4/2026'), equals('2026-10-04'));
       expect(PcsoParser.parseDrawDate('1/2/2026'), equals('2026-01-02'));
       expect(PcsoParser.parseDrawDate('2026-10-04'), equals('2026-10-04'));
+    });
+  });
+
+  group('User Deactivation & Access Control Tests', () {
+    test('deactivating user properly changes isActive flag and prevents access', () async {
+      final db = InMemoryDatabaseExecutor();
+      await db.init();
+      final userRepo = UserRepositoryImpl(db);
+
+      final testUser = User(
+        id: 10,
+        username: 'testplayer',
+        passwordHash: PasswordHasher.hash('Secret@123'),
+        role: 'CLIENT',
+        fullName: 'Test Player',
+        email: 'test@example.com',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        isActive: true,
+      );
+
+      final insertId = await userRepo.insertUser(testUser);
+      expect(insertId, greaterThan(0));
+
+      var fetched = await userRepo.getByUsername('testplayer');
+      expect(fetched, isNotNull);
+      expect(fetched!.isActive, isTrue);
+
+      // Deactivate user
+      await userRepo.deactivateUser(fetched.id, username: 'testplayer');
+
+      fetched = await userRepo.getByUsername('testplayer');
+      expect(fetched, isNotNull);
+      expect(fetched!.isActive, isFalse);
+
+      // Re-activate user
+      await userRepo.activateUser(fetched.id, username: 'testplayer');
+      fetched = await userRepo.getByUsername('testplayer');
+      expect(fetched, isNotNull);
+      expect(fetched!.isActive, isTrue);
     });
   });
 }

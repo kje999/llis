@@ -27,6 +27,10 @@ class _ClientDashboardState extends State<ClientDashboard> {
   void initState() {
     super.initState();
     _loadUnreadNotifications();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AuthService>().validateCurrentSession();
+    });
   }
 
   Future<void> _loadUnreadNotifications() async {
@@ -42,6 +46,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
   void _onSelectTab(int index) {
     setState(() => _selectedIndex = index);
     _loadUnreadNotifications();
+    context.read<AuthService>().validateCurrentSession();
   }
 
   @override

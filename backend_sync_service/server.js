@@ -178,10 +178,31 @@ app.post('/api/users/sync', (req, res) => {
       role: user.role || 'CLIENT',
       full_name: user.full_name || user.username,
       email: user.email || '',
-      is_active: user.is_active !== undefined ? (user.is_active ? 1 : 0) : 1,
+      is_active: user.is_active !== undefined ? ((user.is_active === 1 || user.is_active === true || user.is_active === '1') ? 1 : 0) : 1,
     });
-    addLog(`[User Sync] User "${user.username}" saved into central SQLite database.`);
+    addLog(`[User Sync] User "${user.username}" saved into central SQLite database (is_active=${user.is_active}).`);
     res.json({ status: 'SUCCESS', username: user.username });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 7b. Update User Status (Activate / Deactivate)
+app.post('/api/users/status', (req, res) => {
+  try {
+    const { id, username, is_active } = req.body;
+    const activeVal = (is_active === 1 || is_active === true || is_active === '1') ? 1 : 0;
+    let updated;
+    if (id) {
+      updated = db.prepare('UPDATE users SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(activeVal, id);
+    } else if (username) {
+      updated = db.prepare('UPDATE users SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE LOWER(username) = ?').run(activeVal, username.toLowerCase());
+    } else {
+      return res.status(400).json({ error: 'Missing user id or username' });
+    }
+    const target = username || `ID ${id}`;
+    addLog(`[Admin] User "${target}" status changed to ${activeVal ? 'ACTIVE' : 'DEACTIVATED'}.`);
+    res.json({ status: 'SUCCESS', updated: updated.changes, is_active: activeVal });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

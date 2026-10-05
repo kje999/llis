@@ -11,7 +11,10 @@ class UserRepositoryImpl implements UserRepository {
   UserRepositoryImpl(this._db);
 
   @override
-  Future<List<User>> getAllUsers() async {
+  Future<List<User>> getAllUsers({bool forceSync = false}) async {
+    if (forceSync) {
+      await syncUsersFromBackend();
+    }
     var rows = await _db.query('SELECT * FROM users ORDER BY id ASC');
     if (rows.isEmpty) {
       await syncUsersFromBackend();
@@ -32,7 +35,10 @@ class UserRepositoryImpl implements UserRepository {
   }
 
   @override
-  Future<User?> getByUsername(String username) async {
+  Future<User?> getByUsername(String username, {bool forceSync = false}) async {
+    if (forceSync) {
+      await syncUsersFromBackend();
+    }
     var rows = await _db.query('SELECT * FROM users WHERE LOWER(username) = ?', [username.toLowerCase()]);
     if (rows.isEmpty) {
       await syncUsersFromBackend();
@@ -43,6 +49,7 @@ class UserRepositoryImpl implements UserRepository {
   }
 
   /// Synchronizes real persistent user accounts from the central SQLite backend
+  @override
   Future<void> syncUsersFromBackend() async {
     try {
       final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'localhost';
@@ -135,6 +142,15 @@ class UserRepositoryImpl implements UserRepository {
       where: 'id = ?',
       whereArgs: [user.id],
     );
+
+    // Sync full user data to backend central SQLite DB
+    try {
+      await http.post(
+        Uri.parse(ApiConstants.userSyncEndpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(user.toMap()),
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
   }
 
   @override
@@ -148,10 +164,21 @@ class UserRepositoryImpl implements UserRepository {
       where: 'id = ?',
       whereArgs: [userId],
     );
+
+    final user = await getById(userId);
+    if (user != null) {
+      try {
+        await http.post(
+          Uri.parse(ApiConstants.userSyncEndpoint),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(user.toMap()),
+        ).timeout(const Duration(seconds: 4));
+      } catch (_) {}
+    }
   }
 
   @override
-  Future<void> deactivateUser(int userId) async {
+  Future<void> deactivateUser(int userId, {String? username}) async {
     await _db.update(
       'users',
       {
@@ -161,6 +188,78 @@ class UserRepositoryImpl implements UserRepository {
       where: 'id = ?',
       whereArgs: [userId],
     );
+
+    User? user;
+    try {
+      user = await getById(userId);
+    } catch (_) {}
+    final uname = username ?? user?.username;
+
+    // Push status change to backend central SQLite DB
+    try {
+      final statusEndpoint = '${ApiConstants.baseUrl}/api/users/status';
+      await http.post(
+        Uri.parse(statusEndpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': userId,
+          if (uname != null) 'username': uname,
+          'is_active': 0,
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      if (user != null) {
+        final map = user.toMap();
+        map['is_active'] = 0;
+        await http.post(
+          Uri.parse(ApiConstants.userSyncEndpoint),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(map),
+        ).timeout(const Duration(seconds: 4));
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> activateUser(int userId, {String? username}) async {
+    await _db.update(
+      'users',
+      {
+        'is_active': 1,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+
+    User? user;
+    try {
+      user = await getById(userId);
+    } catch (_) {}
+    final uname = username ?? user?.username;
+
+    try {
+      final statusEndpoint = '${ApiConstants.baseUrl}/api/users/status';
+      await http.post(
+        Uri.parse(statusEndpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': userId,
+          if (uname != null) 'username': uname,
+          'is_active': 1,
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      if (user != null) {
+        final map = user.toMap();
+        map['is_active'] = 1;
+        await http.post(
+          Uri.parse(ApiConstants.userSyncEndpoint),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(map),
+        ).timeout(const Duration(seconds: 4));
+      }
+    } catch (_) {}
   }
 
   @override

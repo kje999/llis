@@ -21,6 +21,20 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = context.read<AuthService>();
+      if (auth.lastAuthError == 'ACCOUNT_DEACTIVATED') {
+        setState(() {
+          _errorMessage = '⚠️ This account has been deactivated by the administrator. Access is blocked.';
+        });
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
@@ -247,7 +261,11 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _isLoading = false;
       if (!success) {
-        _errorMessage = 'Invalid username or password, or account inactive.';
+        if (authService.lastAuthError == 'ACCOUNT_DEACTIVATED') {
+          _errorMessage = '⚠️ This account has been deactivated by the administrator. Access is denied.';
+        } else {
+          _errorMessage = 'Invalid username or password.';
+        }
       }
     });
   }

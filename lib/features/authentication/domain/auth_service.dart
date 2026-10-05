@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:my_lucky_lotto_pred/core/constants/api_constants.dart';
 import 'package:my_lucky_lotto_pred/core/security/password_hasher.dart';
 import 'package:my_lucky_lotto_pred/shared/models/user.dart';
 import 'package:my_lucky_lotto_pred/features/authentication/domain/user_repository.dart';
-
 import 'package:my_lucky_lotto_pred/core/storage/session_storage.dart';
 
 class AuthService extends ChangeNotifier {
@@ -20,6 +22,10 @@ class AuthService extends ChangeNotifier {
   String? _sessionToken;
   bool _mustChangeAdminPassword = false;
   bool _isInitialized = false;
+
+  Timer? _sessionValidationTimer;
+  String? _lastAuthError;
+  String? get lastAuthError => _lastAuthError;
 
   AuthService(this._userRepo) {
     _restoreSession();
@@ -105,11 +111,18 @@ class AuthService extends ChangeNotifier {
             _mustChangeAdminPassword = false;
           }
           _isInitialized = true;
+          if (!user.isAdmin) {
+            startSessionGuard();
+            validateCurrentSession();
+          }
           notifyListeners();
 
           // Sync into database in background without blocking UI
           _ensureUserInDatabase(user);
           return;
+        } else {
+          _lastAuthError = 'ACCOUNT_DEACTIVATED';
+          await _clearSession();
         }
       }
     } catch (_) {}
@@ -155,7 +168,15 @@ class AuthService extends ChangeNotifier {
           WebSessionStorage.setItem(_prefExpiresAt, (expiresAt ?? (now + 30 * 86400000)).toString());
           WebSessionStorage.setItem(_prefUserData, jsonEncode(user.toMap()));
 
+          if (!user.isAdmin) {
+            startSessionGuard();
+            validateCurrentSession();
+          }
+
           _ensureUserInDatabase(user);
+        } else if (user != null && !user.isActive) {
+          _lastAuthError = 'ACCOUNT_DEACTIVATED';
+          await _clearSession();
         } else if (expiresAt != null && expiresAt <= now) {
           await _clearSession();
         }
@@ -179,14 +200,82 @@ class AuthService extends ChangeNotifier {
     });
   }
 
+  /// Real-time session guard that validates whether the current user is still active in the central database.
+  void startSessionGuard() {
+    _sessionValidationTimer?.cancel();
+    _sessionValidationTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      validateCurrentSession();
+    });
+  }
+
+  void stopSessionGuard() {
+    _sessionValidationTimer?.cancel();
+    _sessionValidationTimer = null;
+  }
+
+  /// Checks central backend / local database for user deactivation. If deactivated, forces immediate logout.
+  Future<bool> validateCurrentSession() async {
+    if (_currentUser == null) return false;
+    if (_currentUser!.isAdmin) return true;
+
+    try {
+      final url = '${ApiConstants.baseUrl}/api/users';
+      final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 3));
+      if (res.statusCode == 200) {
+        final list = jsonDecode(res.body);
+        if (list is List) {
+          final targetUname = _currentUser!.username.toLowerCase().trim();
+          for (final u in list) {
+            if (u is Map && (u['username']?.toString().toLowerCase().trim() == targetUname)) {
+              final rawActive = u['is_active'];
+              final isActive = rawActive == 1 || rawActive == true || rawActive == '1';
+              if (!isActive) {
+                // User was deactivated by administrator!
+                _lastAuthError = 'ACCOUNT_DEACTIVATED';
+                await logout();
+                return false;
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {
+      try {
+        final local = await _userRepo.getByUsername(_currentUser!.username);
+        if (local != null && !local.isActive) {
+          _lastAuthError = 'ACCOUNT_DEACTIVATED';
+          await logout();
+          return false;
+        }
+      } catch (_) {}
+    }
+    return true;
+  }
+
   Future<bool> login(String username, String password) async {
+    _lastAuthError = null;
+
+    // 1. Force sync latest user status from backend so any deactivations/updates are immediate
+    try {
+      await _userRepo.syncUsersFromBackend();
+    } catch (_) {}
+
     final user = await _userRepo.getByUsername(username.trim());
-    if (user == null || !user.isActive) {
+    if (user == null) {
+      _lastAuthError = 'USER_NOT_FOUND';
+      return false;
+    }
+
+    if (!user.isActive) {
+      _lastAuthError = 'ACCOUNT_DEACTIVATED';
       return false;
     }
 
     final isValid = PasswordHasher.verify(password, user.passwordHash);
-    if (!isValid) return false;
+    if (!isValid) {
+      _lastAuthError = 'INVALID_PASSWORD';
+      return false;
+    }
 
     _currentUser = user;
     await _saveSession(user);
@@ -199,11 +288,17 @@ class AuthService extends ChangeNotifier {
       _mustChangeAdminPassword = false;
     }
 
+    // Start background session validation guard for non-admin users
+    if (!user.isAdmin) {
+      startSessionGuard();
+    }
+
     notifyListeners();
     return true;
   }
 
   Future<void> logout() async {
+    stopSessionGuard();
     _currentUser = null;
     _mustChangeAdminPassword = false;
     await _clearSession();
@@ -262,5 +357,11 @@ class AuthService extends ChangeNotifier {
     }
     notifyListeners();
     return true;
+  }
+
+  @override
+  void dispose() {
+    stopSessionGuard();
+    super.dispose();
   }
 }
