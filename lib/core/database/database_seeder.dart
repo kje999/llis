@@ -1,6 +1,5 @@
 import 'package:intl/intl.dart';
 import 'database_executor.dart';
-import 'package:my_lucky_lotto_pred/core/security/password_hasher.dart';
 
 class DatabaseSeeder {
   static Future<void> seed(DatabaseExecutor db) async {
@@ -69,34 +68,7 @@ class DatabaseSeeder {
       await db.insert('lotto_types', type);
     }
 
-    // 2. Seed Default Admin & Client accounts
-    // ADMIN / ADMIN (password hashed with SHA-256)
-    await db.insert('users', {
-      'id': 1,
-      'username': 'ADMIN',
-      'password_hash': PasswordHasher.hash('ADMIN'),
-      'role': 'ADMIN',
-      'full_name': 'Administrator',
-      'email': 'admin@pcso-llis.gov.ph',
-      'created_at': now,
-      'updated_at': now,
-      'is_active': 1,
-    });
-
-    // Client user
-    await db.insert('users', {
-      'id': 2,
-      'username': 'kenth',
-      'password_hash': PasswordHasher.hash('password123'),
-      'role': 'CLIENT',
-      'full_name': 'Kenth Joshua Espina',
-      'email': 'kenth@example.com',
-      'created_at': now,
-      'updated_at': now,
-      'is_active': 1,
-    });
-
-    // 3. Seed Default App Settings
+    // 2. Default App Settings (User accounts are stored and loaded from the central SQLite database)
     final defaultSettings = [
       {'setting_key': 'automatic_sync_enabled', 'setting_value': 'true', 'updated_at': now},
       {'setting_key': 'sync_interval', 'setting_value': 'Every 1 hour', 'updated_at': now},

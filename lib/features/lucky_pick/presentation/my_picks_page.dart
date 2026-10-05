@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:my_lucky_lotto_pred/core/theme/app_theme.dart';
 import 'package:my_lucky_lotto_pred/features/authentication/domain/auth_service.dart';
 import 'package:my_lucky_lotto_pred/core/services/text_to_speech_service.dart';
 import 'package:my_lucky_lotto_pred/shared/models/lucky_pick.dart';
@@ -29,13 +30,18 @@ class _MyPicksPageState extends State<MyPicksPage> {
     _loadPicks();
   }
 
-  Future<void> _loadPicks() async {
+  Future<void> _loadPicks({bool forceSync = false}) async {
     final auth = context.read<AuthService>();
     if (auth.currentUser == null) return;
+    final user = auth.currentUser!;
     final repo = context.read<LuckyPickRepository>();
     final resultRepo = context.read<LottoResultRepository>();
 
-    final list = await repo.getByUserId(auth.currentUser!.id);
+    if (forceSync) {
+      await repo.syncPicksFromBackend(userId: user.id, username: user.username);
+    }
+
+    final list = await repo.getByUserId(user.id, username: user.username);
 
     // Fetch matching official results for each unique (lottoTypeId, drawDate)
     final cache = <String, LottoResult?>{};
@@ -73,7 +79,7 @@ class _MyPicksPageState extends State<MyPicksPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Re-verified against draw ${pick.drawDate}: $matches matches!'),
-          backgroundColor: const Color(0xFF1E3A8A),
+          backgroundColor: AppTheme.pcsoBlue,
         ),
       );
       _loadPicks();
@@ -82,45 +88,56 @@ class _MyPicksPageState extends State<MyPicksPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 10,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'My Saved Lucky Picks',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : AppTheme.pcsoBlue,
+                    ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
+                  const SizedBox(height: 4),
+                  const Text(
                     'Verify numbers against official PCSO draw results and view exact winning prize tiers.',
-                    style: TextStyle(fontSize: 13, color: Colors.blueGrey),
+                    style: TextStyle(fontSize: 12, color: Colors.blueGrey),
                   ),
                 ],
               ),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E3A8A),
+                  backgroundColor: AppTheme.pcsoBlue,
                   foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Refresh & Check'),
+                icon: const Icon(Icons.refresh, size: 18, color: Color(0xFFFFB300)),
+                label: const Text('Refresh & Check', style: TextStyle(fontWeight: FontWeight.bold)),
                 onPressed: () {
                   setState(() => _isLoading = true);
-                  _loadPicks();
+                  _loadPicks(forceSync: true);
                 },
               ),
             ],
           ),
           const SizedBox(height: 20),
           if (_isLoading)
-            const Center(child: CircularProgressIndicator())
+            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
           else if (_picks.isEmpty)
             Center(
               child: Padding(
@@ -146,7 +163,7 @@ class _MyPicksPageState extends State<MyPicksPage> {
                 final cacheKey = '${pick.lottoTypeId}_${pick.drawDate}';
                 final officialDraw = _officialResultsCache[cacheKey];
 
-                return _buildPickCard(pick, officialDraw);
+                return _buildPickCard(pick, officialDraw, isDark);
               },
             ),
         ],
@@ -154,7 +171,7 @@ class _MyPicksPageState extends State<MyPicksPage> {
     );
   }
 
-  Widget _buildPickCard(LuckyPick pick, LottoResult? officialDraw) {
+  Widget _buildPickCard(LuckyPick pick, LottoResult? officialDraw, bool isDark) {
     final gameCode = pick.lottoTypeCode ?? 'LOTTO_6_42';
     final schedule = PcsoGameRuleService.getSchedule(gameCode);
 
@@ -174,31 +191,39 @@ class _MyPicksPageState extends State<MyPicksPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header Row: Game Title & Badges
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Text(
-                        pick.lottoTypeName ?? 'PCSO 6-Number Lotto',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E3A8A)),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Text(
+                      pick.lottoTypeName ?? 'PCSO 6-Number Lotto',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDark ? const Color(0xFF93C5FD) : AppTheme.pcsoBlue,
                       ),
-                      const SizedBox(width: 8),
-                      _buildStatusBadge(pick, prizeResult),
-                    ],
-                  ),
+                    ),
+                    _buildStatusBadge(pick, prizeResult),
+                  ],
                 ),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
                       tooltip: 'Read numbers aloud',
-                      icon: const Icon(Icons.volume_up, size: 22, color: Colors.blueGrey),
+                      icon: Icon(Icons.volume_up, size: 20, color: isDark ? Colors.white70 : Colors.blueGrey),
                       onPressed: () {
                         final speech = 'Your pick for ${pick.lottoTypeName ?? 'Lotto'} is: '
                             '${TextToSpeechService.formatSpokenNumbers(pick.numbers)}. '
@@ -209,7 +234,7 @@ class _MyPicksPageState extends State<MyPicksPage> {
                     if (officialDraw != null && (!pick.isChecked || pick.matchCount != (prizeResult?.matchCount ?? 0)))
                       IconButton(
                         tooltip: 'Check against official draw',
-                        icon: const Icon(Icons.sync, size: 22, color: Color(0xFF1E3A8A)),
+                        icon: const Icon(Icons.sync, size: 20, color: Color(0xFFFFB300)),
                         onPressed: () => _recheckPick(pick, officialDraw),
                       ),
                   ],
@@ -218,21 +243,25 @@ class _MyPicksPageState extends State<MyPicksPage> {
             ),
             const SizedBox(height: 6),
             // Target Draw Date & Schedule Notice
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              runSpacing: 4,
               children: [
-                const Icon(Icons.event, size: 16, color: Colors.blueGrey),
-                const SizedBox(width: 6),
+                const Icon(Icons.event, size: 15, color: Colors.blueGrey),
                 Text(
                   'Associated Draw Date: ${pick.drawDate}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
                 ),
-                if (schedule != null) ...[
-                  const SizedBox(width: 8),
+                if (schedule != null)
                   Text(
                     '(${schedule.drawDaysText} at 9:00 PM)',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.grey.shade600),
                   ),
-                ],
               ],
             ),
             const SizedBox(height: 12),

@@ -59,6 +59,17 @@ class Sqlite3Executor implements DatabaseExecutor {
   }
 
   @override
+  Future<int> insertBatch(String table, List<Map<String, dynamic>> rowsList) async {
+    if (rowsList.isEmpty) return 0;
+    int count = 0;
+    for (final values in rowsList) {
+      await insert(table, values);
+      count++;
+    }
+    return count;
+  }
+
+  @override
   Future<int> update(String table, Map<String, dynamic> values, {String? where, List<Object?>? whereArgs}) async {
     final setClause = values.keys.map((k) => '$k = ?').join(', ');
     var sqlQuery = 'UPDATE $table SET $setClause';

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:my_lucky_lotto_pred/core/theme/app_theme.dart';
 import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_type_repository.dart';
 import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
 import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
 import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
 import 'package:my_lucky_lotto_pred/shared/widgets/lotto_result_card.dart';
+import 'package:my_lucky_lotto_pred/features/synchronization/domain/synchronization_service.dart';
 
 class LottoResultsPage extends StatefulWidget {
   const LottoResultsPage({super.key});
@@ -30,13 +32,18 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool forceSync = false}) async {
     final typeRepo = context.read<LottoTypeRepository>();
     final resultRepo = context.read<LottoResultRepository>();
+    final syncService = context.read<SynchronizationService>();
+
+    var total = await resultRepo.getTotalCount(lottoTypeId: _selectedTypeId);
+    if (total == 0 || forceSync) {
+      await syncService.loadCachedResultsFromBackend();
+      total = await resultRepo.getTotalCount(lottoTypeId: _selectedTypeId);
+    }
 
     final types = await typeRepo.getAll();
-    final total = await resultRepo.getTotalCount(lottoTypeId: _selectedTypeId);
-
     final offset = (_currentPage - 1) * _pageSize;
     // Guaranteed sorted descending by date (recent and latest top)
     final results = await resultRepo.getAll(
@@ -71,38 +78,49 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 10,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Official PCSO Draw Results',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : AppTheme.pcsoBlue,
+                    ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Authoritative historical draw results sorted from most recent to oldest (20 results per page).',
-                    style: TextStyle(fontSize: 13, color: Colors.blueGrey),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Historical draw results sorted from most recent to oldest (20 per page).',
+                    style: TextStyle(fontSize: 12, color: Colors.blueGrey),
                   ),
                 ],
               ),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E3A8A),
+                  backgroundColor: AppTheme.pcsoBlue,
                   foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Refresh'),
+                icon: const Icon(Icons.refresh, size: 18, color: Color(0xFFFFB300)),
+                label: const Text('Refresh', style: TextStyle(fontWeight: FontWeight.bold)),
                 onPressed: () {
                   setState(() => _isLoading = true);
-                  _loadData();
+                  _loadData(forceSync: true);
                 },
               ),
             ],
@@ -116,7 +134,7 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
                 FilterChip(
                   label: const Text('All 5 Lotto Games'),
                   selected: _selectedTypeId == null,
-                  selectedColor: const Color(0xFF1E3A8A).withValues(alpha: 0.15),
+                  selectedColor: AppTheme.pcsoBlue.withValues(alpha: 0.15),
                   onSelected: (val) {
                     setState(() {
                       _selectedTypeId = null;
@@ -132,7 +150,7 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
                       child: FilterChip(
                         label: Text(type.name),
                         selected: _selectedTypeId == type.id,
-                        selectedColor: const Color(0xFF1E3A8A).withValues(alpha: 0.15),
+                        selectedColor: AppTheme.pcsoBlue.withValues(alpha: 0.15),
                         onSelected: (val) {
                           setState(() {
                             _selectedTypeId = val ? type.id : null;
@@ -151,26 +169,38 @@ class _LottoResultsPageState extends State<LottoResultsPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey.shade300),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
               children: [
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.sort, size: 18, color: Color(0xFF1E3A8A)),
+                    const Icon(Icons.sort, size: 18, color: Color(0xFFFFB300)),
                     const SizedBox(width: 8),
                     Text(
-                      'Showing ${((_currentPage - 1) * _pageSize) + 1}–${(((_currentPage - 1) * _pageSize) + _results.length).clamp(0, _totalRecords)} of $_totalRecords results (Latest draw on top)',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF1E3A8A)),
+                      'Showing ${((_currentPage - 1) * _pageSize) + 1}–${(((_currentPage - 1) * _pageSize) + _results.length).clamp(0, _totalRecords)} of $_totalRecords results',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: isDark ? Colors.white70 : AppTheme.pcsoBlue,
+                      ),
                     ),
                   ],
                 ),
                 Text(
                   'Page $_currentPage of $_totalPages',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white60 : Colors.blueGrey,
+                  ),
                 ),
               ],
             ),

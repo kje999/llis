@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: llis-backend-sync
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: cd backend_sync_service && npm install
+    startCommand: cd backend_sync_service && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /api/health

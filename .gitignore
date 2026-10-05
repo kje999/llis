@@ -49,3 +49,4 @@ node_modules/
 backend_sync_service/node_modules/
 *.db-shm
 *.db-wal
+mobile_screenshots/

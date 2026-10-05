@@ -90,6 +90,13 @@ class LottoResultRepositoryImpl implements LottoResultRepository {
   }
 
   @override
+  Future<int> insertBatch(List<LottoResult> results) async {
+    if (results.isEmpty) return 0;
+    final rows = results.map((r) => r.toMap()..remove('id')).toList();
+    return await _db.insertBatch('lotto_results', rows);
+  }
+
+  @override
   Future<void> update(LottoResult result) async {
     await _db.update(
       'lotto_results',

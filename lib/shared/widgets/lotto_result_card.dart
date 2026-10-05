@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_lucky_lotto_pred/core/theme/app_theme.dart';
 import 'package:my_lucky_lotto_pred/core/services/text_to_speech_service.dart';
 import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
 import 'lotto_ball.dart';
@@ -10,6 +11,8 @@ class LottoResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       elevation: 2,
@@ -19,42 +22,50 @@ class LottoResultCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: isDark ? const Color(0xFF1E293B) : Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade200),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF334155) : Colors.blue.shade200,
+                        ),
                       ),
                       child: Text(
                         result.lottoTypeName ?? 'PCSO 6-Number Lotto',
                         style: TextStyle(
-                          color: Colors.blue.shade900,
+                          color: isDark ? const Color(0xFF93C5FD) : AppTheme.pcsoBlue,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
+                        color: isDark ? const Color(0xFF064E3B) : const Color(0xFFE8F5E9),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.verified, size: 14, color: Colors.green),
+                          Icon(Icons.verified, size: 14, color: Color(0xFF10B981)),
                           SizedBox(width: 4),
                           Text(
-                            'OFFICIAL PCSO RESULT',
+                            'OFFICIAL DRAW',
                             style: TextStyle(
-                              color: Colors.green,
+                              color: Color(0xFF10B981),
                               fontWeight: FontWeight.bold,
                               fontSize: 11,
                             ),
@@ -66,7 +77,7 @@ class LottoResultCard extends StatelessWidget {
                 ),
                 IconButton(
                   tooltip: 'Read numbers aloud',
-                  icon: const Icon(Icons.volume_up, color: Colors.blueGrey),
+                  icon: Icon(Icons.volume_up, color: isDark ? Colors.white70 : Colors.blueGrey),
                   onPressed: () {
                     final speech = 'The latest ${result.lottoTypeName ?? 'Lotto'} result for ${result.drawDate} is: '
                         '${TextToSpeechService.formatSpokenNumbers(result.numbers)}. '
@@ -76,12 +87,16 @@ class LottoResultCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               'Draw Date: ${result.drawDate}',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              style: TextStyle(
+                color: isDark ? Colors.white60 : Colors.grey.shade600,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -89,36 +104,56 @@ class LottoResultCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            Divider(color: Colors.grey.shade200),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Divider(color: isDark ? const Color(0xFF334155) : Colors.grey.shade200),
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Jackpot Prize: ${result.formattedJackpot}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFF1E3A8A),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Jackpot: ',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.pcsoGoldGradient,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            result.formattedJackpot,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           result.winners > 0 ? Icons.emoji_events : Icons.person_outline,
                           size: 14,
-                          color: result.winners > 0 ? Colors.amber.shade800 : Colors.blueGrey,
+                          color: result.winners > 0 ? const Color(0xFFF59E0B) : Colors.blueGrey,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Winners: ${result.winners}',
+                          'Jackpot Winners: ${result.winners}',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: result.winners > 0 ? Colors.amber.shade900 : Colors.blueGrey,
+                            color: result.winners > 0 ? const Color(0xFFF59E0B) : Colors.blueGrey,
                           ),
                         ),
                       ],
@@ -127,7 +162,7 @@ class LottoResultCard extends StatelessWidget {
                 ),
                 Text(
                   'Source: ${result.source}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  style: TextStyle(fontSize: 11, color: isDark ? Colors.white38 : Colors.grey.shade500),
                 ),
               ],
             ),

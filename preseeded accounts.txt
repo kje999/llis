@@ -1,3 +1,3 @@
-Role	Username	Password
-Administrator	ADMIN	ADMIN
-Client	kenth	password123
+Role	Username	Password	Storage
+Administrator	admin	Admin@2026	Central SQLite Database (users table)
+Client	player1	Player@2026	Central SQLite Database (users table)

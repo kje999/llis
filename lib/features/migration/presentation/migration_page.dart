@@ -43,82 +43,94 @@ class _MigrationPageState extends State<MigrationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Legacy MySQL Database Migration',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Convert legacy VB.NET 2013 / MySQL database dumps directly into modern SQLite format with SHA-256 password re-hashing.',
-            style: TextStyle(fontSize: 13, color: Colors.blueGrey),
-          ),
-          const SizedBox(height: 20),
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Paste Legacy MySQL SQL Dump Content:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _sqlTextController,
-                    maxLines: 8,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText: 'Paste SQL statements from Lucky Lotto Database MySQL folder...',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
-                    icon: _isMigrating
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Icon(Icons.transform),
-                    label: const Text('PARSE & MIGRATE INTO SQLITE'),
-                    onPressed: _isMigrating ? null : _startMigration,
-                  ),
-                  if (_report != null) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.green.shade300),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Legacy MySQL Database Migration',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Convert legacy VB.NET 2013 / MySQL database dumps directly into modern SQLite format with SHA-256 password re-hashing.',
+                style: TextStyle(fontSize: 13, color: Colors.blueGrey),
+              ),
+              const SizedBox(height: 20),
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 2,
+                child: Padding(
+                  padding: EdgeInsets.all(isMobile ? 16 : 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Paste Legacy MySQL SQL Dump Content:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _sqlTextController,
+                        maxLines: 8,
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: 'Paste SQL statements from Lucky Lotto Database MySQL folder...',
+                        ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Row(
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: isMobile ? double.infinity : null,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E3A8A),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          ),
+                          icon: _isMigrating
+                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Icon(Icons.transform),
+                          label: const Text('PARSE & MIGRATE INTO SQLITE'),
+                          onPressed: _isMigrating ? null : _startMigration,
+                        ),
+                      ),
+                      if (_report != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.green.shade300),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.check_circle, color: Colors.green),
-                              SizedBox(width: 8),
-                              Text('Legacy Migration Complete', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                              const Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.green),
+                                  SizedBox(width: 8),
+                                  Text('Legacy Migration Complete', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text('• Users imported & re-hashed: ${_report!.usersImported}'),
+                              Text('• Historical draws converted: ${_report!.resultsImported}'),
+                              Text('• Skipped / unhandled statements: ${_report!.skippedRecords}'),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Text('• Users imported & re-hashed: ${_report!.usersImported}'),
-                          Text('• Historical draws converted: ${_report!.resultsImported}'),
-                          Text('• Skipped / unhandled statements: ${_report!.skippedRecords}'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:my_lucky_lotto_pred/core/constants/api_constants.dart';
 import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_type_repository.dart';
 import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
 import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/lucky_pick_repository.dart';
@@ -53,14 +54,15 @@ class SynchronizationService {
        _notifRepo = notifRepo;
 
   /// Runs PCSO synchronization:
-  /// Connects to backend sync service (port 8081), parses direct HTML if provided, or generates live draws for date range
+  /// Connects to backend sync service, parses direct HTML if provided, or generates live draws for date range
   Future<SyncSummary> synchronize({
-    String syncEndpoint = 'http://localhost:8081/api/pcso-results',
+    String? syncEndpoint,
     DateTime? fromDate,
     DateTime? toDate,
     String? selectedGameCode,
     String? rawHtmlContent,
   }) async {
+    final activeEndpoint = syncEndpoint ?? ApiConstants.syncEndpoint;
     final startTime = DateTime.now();
     int found = 0;
     int inserted = 0;
@@ -80,10 +82,33 @@ class SynchronizationService {
         rawDraws = _parseRawHtmlOrText(rawHtmlContent);
       }
 
-      // 2. If no direct HTML was provided, query the synchronization API / scraper
+      // 2. If no direct HTML was provided, trigger live scraping via backend sync service
       if (rawDraws.isEmpty) {
         try {
-          final uri = Uri.parse(syncEndpoint).replace(
+          final triggerUri = Uri.parse(ApiConstants.triggerSyncEndpoint);
+          final triggerRes = await http
+              .post(
+                triggerUri,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'fromDate': DateFormat('yyyy-MM-dd').format(targetStart),
+                  'toDate': DateFormat('yyyy-MM-dd').format(targetEnd),
+                  'gameFilter': selectedGameCode ?? 'ALL',
+                }),
+              )
+              .timeout(const Duration(seconds: 30));
+          if (triggerRes.statusCode == 200) {
+            final summaryData = jsonDecode(triggerRes.body);
+            if (summaryData['draws'] is List && (summaryData['draws'] as List).isNotEmpty) {
+              rawDraws = List<Map<String, dynamic>>.from(summaryData['draws']);
+            }
+          }
+        } catch (_) {
+          // Continue to query cache if trigger timed out or was already running
+        }
+
+        try {
+          final uri = Uri.parse(activeEndpoint).replace(
             queryParameters: {
               'startDate': DateFormat('yyyy-MM-dd').format(targetStart),
               'endDate': DateFormat('yyyy-MM-dd').format(targetEnd),
@@ -95,7 +120,7 @@ class SynchronizationService {
 
           final response = await http
               .get(uri)
-              .timeout(const Duration(seconds: 4));
+              .timeout(const Duration(seconds: 6));
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body);
             if (data is List) {
@@ -103,22 +128,35 @@ class SynchronizationService {
             }
           }
         } catch (_) {
-          // Fallback: If external scraping endpoint is blocked or offline,
-          // execute range-based scraper generator for the specified From Date -> To Date
-          rawDraws = _generateRangeDraws(
-            targetStart,
-            targetEnd,
-            selectedGameCode,
-          );
+          // No fake fallback on network or API failure
         }
       }
 
-      // If still empty, use range generator
+      // No fake fallback: If still empty, do not fabricate synthetic draws
       if (rawDraws.isEmpty) {
-        rawDraws = _generateRangeDraws(
-          targetStart,
-          targetEnd,
-          selectedGameCode,
+        final endTime = DateTime.now();
+        final log = SynchronizationLog(
+          id: 0,
+          startedAt: startTime,
+          completedAt: endTime,
+          status: 'NO_DATA',
+          recordsFound: 0,
+          recordsInserted: 0,
+          recordsUpdated: 0,
+          recordsSkipped: 0,
+          errorMessage:
+              'No official PCSO draws found. Fake fallback is disabled. Paste official table/HTML from pcso.gov.ph to import.',
+          sourceUrl: 'https://www.pcso.gov.ph/searchlottoresult.aspx',
+        );
+        await _syncRepo.insertLog(log);
+        return SyncSummary(
+          recordsFound: 0,
+          recordsInserted: 0,
+          recordsUpdated: 0,
+          recordsSkipped: 0,
+          status: 'NO_DATA',
+          errorMessage:
+              'No official draws found from PCSO portal. Access may be restricted by firewall. Copy and paste the official table from pcso.gov.ph into the HTML / Table import box.',
         );
       }
 
@@ -199,6 +237,32 @@ class SynchronizationService {
             skipped++;
           }
         }
+      }
+
+      // Forward genuine official draws to Central SQLite Backend cache only if parsed from manual HTML paste
+      if (rawHtmlContent != null && rawHtmlContent.trim().isNotEmpty && rawDraws.isNotEmpty) {
+        try {
+          final backendPayload = rawDraws.map((d) {
+            final gName = d['game']?.toString() ?? '';
+            final gCode = PcsoParser.normalizeGameCode(gName) ?? 'LOTTO_6_42';
+            return {
+              'lotto_code': gCode,
+              'game_name': gName,
+              'numbers': d['numbers']?.toString() ?? '',
+              'draw_date': d['draw_date']?.toString() ?? '',
+              'jackpot': (d['jackpot'] as num?)?.toDouble() ?? 0.0,
+              'winners': (d['winners'] as num?)?.toInt() ?? 0,
+              'source': 'OFFICIAL_IMPORT',
+            };
+          }).toList();
+          await http
+              .post(
+                Uri.parse(ApiConstants.importEndpoint),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode(backendPayload),
+              )
+              .timeout(const Duration(seconds: 5));
+        } catch (_) {}
       }
     } catch (e) {
       error = e.toString();
@@ -346,104 +410,77 @@ class SynchronizationService {
     return results;
   }
 
-  /// Generates realistic official PCSO draws for the specified date range according to official schedules
-  List<Map<String, dynamic>> _generateRangeDraws(
-    DateTime startDate,
-    DateTime endDate,
-    String? gameFilter,
-  ) {
-    final results = <Map<String, dynamic>>[];
+  /// Automatically loads cached official draw results from the central backend SQLite database
+  /// (http://localhost:8081/api/pcso-results) into the local database without scraping PCSO.
+  /// If local database already has records, only missing draws are batch-inserted.
+  Future<int> loadCachedResultsFromBackend({int limit = 1000}) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.syncEndpoint}?limit=$limit');
+      final response = await http.get(uri).timeout(const Duration(seconds: 4));
+      if (response.statusCode != 200) return 0;
 
-    final games = [
-      {
-        'name': 'Ultra Lotto 6/58',
-        'max': 58,
-        'jackpot': 361488985.19,
-        'days': [2, 5, 7],
-      }, // Tue, Fri, Sun
-      {
-        'name': 'Grand Lotto 6/55',
-        'max': 55,
-        'jackpot': 29800000.00,
-        'days': [1, 3, 6],
-      }, // Mon, Wed, Sat
-      {
-        'name': 'Super Lotto 6/49',
-        'max': 49,
-        'jackpot': 34464909.57,
-        'days': [2, 4, 7],
-      }, // Tue, Thu, Sun
-      {
-        'name': 'Mega Lotto 6/45',
-        'max': 45,
-        'jackpot': 11300000.00,
-        'days': [1, 3, 5],
-      }, // Mon, Wed, Fri
-      {
-        'name': 'Lotto 6/42',
-        'max': 42,
-        'jackpot': 7450000.00,
-        'days': [2, 4, 6],
-      }, // Tue, Thu, Sat
-    ];
+      final dynamic decoded = jsonDecode(response.body);
+      if (decoded is! List || decoded.isEmpty) return 0;
 
-    DateTime current = endDate;
-    int daysLimit = endDate.difference(startDate).inDays.abs() + 1;
-    if (daysLimit > 366) daysLimit = 366; // Maximum 1 year
+      final lottoTypes = await _typeRepo.getAll();
+      final typeMap = {for (final t in lottoTypes) t.code: t};
 
-    for (int i = 0; i < daysLimit; i++) {
-      final weekday = current.weekday;
-      final dateStr = DateFormat('yyyy-MM-dd').format(current);
+      // Query existing draw keys so we never create duplicates
+      final existingResults = await _resultRepo.getAll(limit: 5000);
+      final existingKeys = {
+        for (final r in existingResults) '${r.lottoTypeId}_${r.drawDate}'
+      };
 
-      for (final g in games) {
-        final days = g['days'] as List<int>;
-        if (days.contains(weekday)) {
-          final gName = g['name'] as String;
-          if (gameFilter != null && gameFilter != 'ALL') {
-            final code = PcsoParser.normalizeGameCode(gName);
-            if (code != gameFilter) continue;
-          }
+      final toInsert = <LottoResult>[];
+      for (final item in decoded) {
+        if (item is! Map) continue;
+        final raw = Map<String, dynamic>.from(item);
 
-          // Generate combinations
-          List<int> nums;
-          int winners = 0;
-          double jackpot = g['jackpot'] as double;
+        final rawGame = raw['game']?.toString() ?? raw['lotto_code']?.toString() ?? '';
+        final gameCode = PcsoParser.normalizeGameCode(rawGame) ?? raw['lotto_code']?.toString();
+        if (gameCode == null || !typeMap.containsKey(gameCode)) continue;
 
-          if (dateStr == '2026-10-04' && gName.contains('6/58')) {
-            nums = [48, 15, 26, 10, 46, 11]; // Original drawn order as displayed by PCSO
-            jackpot = 361488985.19;
-            winners = 0;
-          } else if (dateStr == '2026-10-04' && gName.contains('6/49')) {
-            nums = [24, 3, 45, 19, 6, 44]; // Original drawn order as displayed by PCSO
-            jackpot = 34464909.57;
-            winners = 0;
-          } else {
-            final set = <int>{};
-            final maxNum = g['max'] as int;
-            int seed =
-                current.millisecondsSinceEpoch ~/ 86400000 + gName.length * 31;
-            while (set.length < 6) {
-              seed = (seed * 9301 + 49297) % 233280;
-              set.add(1 + (seed % maxNum));
-            }
-            nums = set.toList(); // Preserve original drawn order without sorting
-            winners = (seed % 97 == 0) ? 1 : 0;
-            jackpot = (g['jackpot'] as double) + ((seed % 40) * 1000000.0);
-          }
+        final lottoType = typeMap[gameCode]!;
+        final rawNumbers = raw['numbers']?.toString() ?? '';
+        final numbers = PcsoParser.parseNumbers(rawNumbers);
+        if (numbers == null || !PcsoParser.validateAgainstType(lottoType, numbers)) continue;
 
-          results.add({
-            'game': gName,
-            'numbers': nums.map((n) => n.toString().padLeft(2, '0')).join('-'),
-            'draw_date': dateStr,
-            'jackpot': jackpot,
-            'winners': winners,
-          });
-        }
+        final rawDate = raw['draw_date']?.toString() ?? '';
+        final drawDate = PcsoParser.parseDrawDate(rawDate);
+        final key = '${lottoType.id}_$drawDate';
+        if (existingKeys.contains(key)) continue;
+
+        final jackpot = (raw['jackpot'] as num?)?.toDouble() ?? 0.0;
+        final winners = (raw['winners'] as num?)?.toInt() ?? 0;
+
+        toInsert.add(LottoResult(
+          id: 0,
+          lottoTypeId: lottoType.id,
+          drawDate: drawDate,
+          number1: numbers[0],
+          number2: numbers[1],
+          number3: numbers[2],
+          number4: numbers[3],
+          number5: numbers[4],
+          number6: numbers[5],
+          jackpotPrize: jackpot,
+          winners: winners,
+          source: raw['source']?.toString() ?? 'PCSO_CENTRAL_DB',
+          sourceUrl: 'https://www.pcso.gov.ph/searchlottoresult.aspx',
+          scrapedAt: DateTime.now(),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ));
       }
 
-      current = current.subtract(const Duration(days: 1));
+      if (toInsert.isNotEmpty) {
+        await _resultRepo.insertBatch(toInsert);
+        return toInsert.length;
+      }
+      return 0;
+    } catch (_) {
+      return 0;
     }
-
-    return results;
   }
 }
+

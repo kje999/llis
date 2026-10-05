@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:my_lucky_lotto_pred/core/constants/api_constants.dart';
 import 'package:my_lucky_lotto_pred/core/database/database_executor.dart';
 import 'package:my_lucky_lotto_pred/shared/models/user.dart';
 import 'package:my_lucky_lotto_pred/features/authentication/domain/user_repository.dart';
@@ -11,22 +12,102 @@ class UserRepositoryImpl implements UserRepository {
 
   @override
   Future<List<User>> getAllUsers() async {
-    final rows = await _db.query('SELECT * FROM users ORDER BY id ASC');
+    var rows = await _db.query('SELECT * FROM users ORDER BY id ASC');
+    if (rows.isEmpty) {
+      await syncUsersFromBackend();
+      rows = await _db.query('SELECT * FROM users ORDER BY id ASC');
+    }
     return rows.map((r) => User.fromMap(r)).toList();
   }
 
   @override
   Future<User?> getById(int id) async {
-    final rows = await _db.query('SELECT * FROM users WHERE id = ?', [id]);
+    var rows = await _db.query('SELECT * FROM users WHERE id = ?', [id]);
+    if (rows.isEmpty) {
+      await syncUsersFromBackend();
+      rows = await _db.query('SELECT * FROM users WHERE id = ?', [id]);
+    }
     if (rows.isEmpty) return null;
     return User.fromMap(rows.first);
   }
 
   @override
   Future<User?> getByUsername(String username) async {
-    final rows = await _db.query('SELECT * FROM users WHERE LOWER(username) = ?', [username.toLowerCase()]);
+    var rows = await _db.query('SELECT * FROM users WHERE LOWER(username) = ?', [username.toLowerCase()]);
+    if (rows.isEmpty) {
+      await syncUsersFromBackend();
+      rows = await _db.query('SELECT * FROM users WHERE LOWER(username) = ?', [username.toLowerCase()]);
+    }
     if (rows.isEmpty) return null;
     return User.fromMap(rows.first);
+  }
+
+  /// Synchronizes real persistent user accounts from the central SQLite backend
+  Future<void> syncUsersFromBackend() async {
+    try {
+      final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'localhost';
+      final urls = [
+        ApiConstants.usersEndpoint,
+        'http://$host:8081/api/users',
+        'http://localhost:8081/api/users',
+        'http://127.0.0.1:8081/api/users',
+      ];
+      http.Response? res;
+      for (final u in urls) {
+        try {
+          final r = await http.get(Uri.parse(u)).timeout(const Duration(seconds: 2));
+          if (r.statusCode == 200) {
+            res = r;
+            break;
+          }
+        } catch (_) {}
+      }
+      if (res != null && res.statusCode == 200) {
+        final list = jsonDecode(res.body);
+        if (list is List) {
+          // Remove legacy seeded test accounts if present in memory
+          await _db.delete('users', where: "LOWER(username) = 'kenth'");
+
+          for (final u in list) {
+            final userMap = Map<String, dynamic>.from(u);
+            final uname = userMap['username']?.toString() ?? '';
+            if (uname.isEmpty) continue;
+            final uId = (userMap['id'] as num?)?.toInt();
+            final existing = await _db.query(
+              'SELECT id FROM users WHERE LOWER(username) = ?',
+              [uname.toLowerCase()],
+            );
+            if (existing.isEmpty) {
+              await _db.insert('users', {
+                if (uId != null) 'id': uId,
+                'username': uname,
+                'password_hash': userMap['password_hash'] ?? '',
+                'role': userMap['role'] ?? 'CLIENT',
+                'full_name': userMap['full_name'] ?? uname,
+                'email': userMap['email'] ?? '',
+                'created_at': userMap['created_at'] ?? DateTime.now().toIso8601String(),
+                'updated_at': userMap['updated_at'] ?? DateTime.now().toIso8601String(),
+                'is_active': (userMap['is_active'] == 1 || userMap['is_active'] == true) ? 1 : 0,
+              });
+            } else {
+              await _db.update(
+                'users',
+                {
+                  if (uId != null) 'id': uId,
+                  'password_hash': userMap['password_hash'] ?? '',
+                  'role': userMap['role'] ?? 'CLIENT',
+                  'full_name': userMap['full_name'] ?? uname,
+                  'email': userMap['email'] ?? '',
+                  'is_active': (userMap['is_active'] == 1 || userMap['is_active'] == true) ? 1 : 0,
+                },
+                where: 'id = ?',
+                whereArgs: [existing.first['id']],
+              );
+            }
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -37,10 +118,10 @@ class UserRepositoryImpl implements UserRepository {
     // Sync to backend central SQLite database
     try {
       await http.post(
-        Uri.parse('http://localhost:8081/api/users/sync'),
+        Uri.parse(ApiConstants.userSyncEndpoint),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(user.toMap()),
-      ).timeout(const Duration(seconds: 2));
+      ).timeout(const Duration(seconds: 3));
     } catch (_) {}
 
     return id;

@@ -41,9 +41,9 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
     await init();
     final trimmed = sql.trim().toUpperCase();
     if (trimmed.startsWith('CREATE TABLE')) {
-      final parts = sql.split(RegExp(r'\s+'));
-      if (parts.length >= 3) {
-        final tableName = parts[2].replaceAll('(', '').replaceAll('"', '').replaceAll('`', '');
+      final clean = sql.replaceAll(RegExp(r'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?', caseSensitive: false), '').trim();
+      final tableName = clean.split(RegExp(r'[\s(]')).first.replaceAll('"', '').replaceAll('`', '').replaceAll(';', '').trim();
+      if (tableName.isNotEmpty) {
         _tables.putIfAbsent(tableName, () => []);
       }
     } else if (trimmed.startsWith('DELETE FROM')) {
@@ -81,11 +81,15 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
     // Handle JOIN lotto_types
     if (cleanSql.toUpperCase().contains('JOIN LOTTO_TYPES')) {
       final types = _tables['lotto_types'] ?? [];
-      final typeMap = {for (var t in types) t['id']: t};
+      final typeMap = <int, Map<String, dynamic>>{};
+      for (final t in types) {
+        final tid = (t['id'] as num?)?.toInt() ?? int.tryParse(t['id']?.toString() ?? '');
+        if (tid != null) typeMap[tid] = t;
+      }
 
       rows = rows.map((r) {
         final merged = Map<String, dynamic>.from(r);
-        final lottoTypeId = r['lotto_type_id'];
+        final lottoTypeId = (r['lotto_type_id'] as num?)?.toInt() ?? int.tryParse(r['lotto_type_id']?.toString() ?? '');
         if (lottoTypeId != null && typeMap.containsKey(lottoTypeId)) {
           final t = typeMap[lottoTypeId]!;
           merged['lotto_type_name'] = t['name'];
@@ -202,10 +206,16 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
     }
 
     // WHERE user_id = ?
-    if (RegExp(r'\buser_id\s*=\s*\?', caseSensitive: false).hasMatch(sql)) {
-      if (params.isNotEmpty && params.first is int) {
-        final targetUserId = params.first as int;
-        result = result.where((r) => r['user_id'] == targetUserId).toList();
+    if (RegExp(r'(?:\w+\.)?user_id\s*=\s*\?', caseSensitive: false).hasMatch(sql)) {
+      final paramIdx = RegExp(r'\?').allMatches(sql.split('user_id').first).length;
+      if (paramIdx < params.length && params[paramIdx] != null) {
+        final targetUserId = int.tryParse(params[paramIdx].toString());
+        if (targetUserId != null) {
+          result = result.where((r) {
+            final uid = (r['user_id'] as num?)?.toInt() ?? int.tryParse(r['user_id']?.toString() ?? '');
+            return uid == targetUserId;
+          }).toList();
+        }
       }
     }
 
@@ -227,8 +237,8 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
       }
     }
 
-    // WHERE draw_date >= ? AND draw_date <= ?
-    if (RegExp(r'draw_date\s*>=\s*\?\s+AND\s+draw_date\s*<=\s*\?', caseSensitive: false).hasMatch(sql)) {
+    // WHERE draw_date >= ? AND draw_date <= ? (with optional table alias like r.draw_date)
+    if (RegExp(r'(?:\w+\.)?draw_date\s*>=\s*\?\s+AND\s+(?:\w+\.)?draw_date\s*<=\s*\?', caseSensitive: false).hasMatch(sql)) {
       String? start;
       String? end;
       for (final p in params) {
@@ -248,8 +258,8 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
       }
     }
 
-    // WHERE draw_date >= '...'
-    final gteDateMatch = RegExp(r'draw_date\s*>=\s*[\x27"]([^\x27"]+)[\x27"]', caseSensitive: false).firstMatch(sql);
+    // WHERE draw_date >= '...' (with optional table alias like r.draw_date)
+    final gteDateMatch = RegExp(r'(?:\w+\.)?draw_date\s*>=\s*[\x27"]([^\x27"]+)[\x27"]', caseSensitive: false).firstMatch(sql);
     if (gteDateMatch != null) {
       final targetDate = gteDateMatch.group(1)!;
       result = result.where((r) {
@@ -284,10 +294,37 @@ class InMemoryDatabaseExecutor implements DatabaseExecutor {
     _lastId++;
     if (!record.containsKey('id') || record['id'] == null) {
       record['id'] = _lastId;
+    } else {
+      final explicitId = (record['id'] as num?)?.toInt();
+      if (explicitId != null && explicitId >= _lastId) {
+        _lastId = explicitId + 1;
+      }
     }
     _tables[table]!.add(record);
     await _persist();
-    return record['id'] as int;
+    return (record['id'] as num).toInt();
+  }
+
+  @override
+  Future<int> insertBatch(String table, List<Map<String, dynamic>> rowsList) async {
+    if (rowsList.isEmpty) return 0;
+    await init();
+    _tables.putIfAbsent(table, () => []);
+    for (final values in rowsList) {
+      final record = Map<String, dynamic>.from(values);
+      _lastId++;
+      if (!record.containsKey('id') || record['id'] == null) {
+        record['id'] = _lastId;
+      } else {
+        final explicitId = (record['id'] as num?)?.toInt();
+        if (explicitId != null && explicitId >= _lastId) {
+          _lastId = explicitId + 1;
+        }
+      }
+      _tables[table]!.add(record);
+    }
+    await _persist();
+    return rowsList.length;
   }
 
   @override

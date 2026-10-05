@@ -7,6 +7,7 @@ abstract class LottoResultRepository {
   Future<LottoResult?> getLatestByTypeId(int lottoTypeId);
   Future<LottoResult?> findExisting(int lottoTypeId, String drawDate);
   Future<int> insert(LottoResult result);
+  Future<int> insertBatch(List<LottoResult> results);
   Future<void> update(LottoResult result);
   Future<void> delete(int id);
   Future<void> deleteAll();

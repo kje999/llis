@@ -35,6 +35,7 @@ class PredictionEngine {
     required LottoType lottoType,
     required List<LottoResult> historicalDraws,
     int count = 5,
+    int? seed,
   }) {
     final analytics = _analyticsService.analyze(
       lottoType: lottoType,
@@ -100,7 +101,7 @@ class PredictionEngine {
     final overduePool = analytics.overdueNumbers.map((n) => n.number).toList();
 
     final candidates = <_CandidateCombination>[];
-    final random = Random(42); // deterministic seed for reproducibility
+    final random = seed != null ? Random(seed) : Random();
 
     // Strategy 1: Hot Momentum + Balanced Core
     // Strategy 2: Overdue Mean Reversion + Pair Synergies

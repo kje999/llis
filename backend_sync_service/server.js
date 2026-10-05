@@ -2,13 +2,20 @@ import express from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
 import db from './db.js';
-import { executeSync } from './sync_engine.js';
+import { executeSync, persistDraws } from './sync_engine.js';
+import {
+  initAutoScraper,
+  getAutoScrapeStatus,
+  setAutoScrapeEnabled,
+  runAutoScrapeForToday,
+} from './auto_scheduler.js';
 
 const app = express();
 const PORT = process.env.PORT || 8081;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // In-memory buffer of recent live logs (keeps latest 100 log lines)
 const liveLogs = [];
@@ -102,6 +109,21 @@ app.get('/api/pcso-results', (req, res) => {
   res.json(mapped);
 });
 
+// 4b. Import verified official PCSO results into central SQLite database
+app.post('/api/pcso-results/import', (req, res) => {
+  try {
+    const draws = req.body;
+    if (!Array.isArray(draws) || draws.length === 0) {
+      return res.status(400).json({ error: 'Expected non-empty array of draw objects' });
+    }
+    const { inserted, updated } = persistDraws(draws);
+    addLog(`[Admin Import] Saved ${draws.length} verified official PCSO draw(s) into SQLite (New: ${inserted}, Updated: ${updated}).`);
+    res.json({ status: 'SUCCESS', count: draws.length, inserted, updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 5. Trigger on-demand sync from Admin UI
 app.post('/api/sync/trigger', async (req, res) => {
   try {
@@ -175,16 +197,37 @@ app.get('/api/users', (req, res) => {
 app.post('/api/picks/sync', (req, res) => {
   try {
     const pick = req.body;
-    if (!pick || !pick.user_id || !pick.numbers) {
+    if (!pick || (!pick.user_id && !pick.username) || !pick.numbers) {
       return res.status(400).json({ error: 'Invalid lucky pick payload' });
     }
+    let userId = pick.user_id;
+    if (pick.username) {
+      const u = db.prepare('SELECT id FROM users WHERE LOWER(username) = ?').get(pick.username.toLowerCase());
+      if (u) userId = u.id;
+    }
     const nums = Array.isArray(pick.numbers) ? pick.numbers : pick.numbers.toString().split('-').map(Number);
+
+    // Check if duplicate combination exists to avoid duplicate entries
+    const existing = db.prepare(`
+      SELECT id FROM lucky_picks
+      WHERE user_id = ? AND draw_date = ? AND number_1 = ? AND number_2 = ? AND number_3 = ? AND number_4 = ? AND number_5 = ? AND number_6 = ?
+    `).get(userId || 1, pick.draw_date, nums[0] || 0, nums[1] || 0, nums[2] || 0, nums[3] || 0, nums[4] || 0, nums[5] || 0);
+
+    if (existing) {
+      db.prepare(`
+        UPDATE lucky_picks
+        SET is_checked = ?, match_count = ?, status = ?
+        WHERE id = ?
+      `).run(pick.is_checked ? 1 : 0, pick.match_count || 0, pick.status || 'PENDING', existing.id);
+      return res.json({ status: 'SUCCESS', id: existing.id, updated: true });
+    }
+
     const stmt = db.prepare(`
       INSERT INTO lucky_picks (user_id, lotto_type_id, draw_date, number_1, number_2, number_3, number_4, number_5, number_6, is_checked, match_count, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const info = stmt.run(
-      pick.user_id,
+      userId || 1,
       pick.lotto_type_id || 1,
       pick.draw_date,
       nums[0] || 0,
@@ -197,7 +240,7 @@ app.post('/api/picks/sync', (req, res) => {
       pick.match_count || 0,
       pick.status || 'PENDING'
     );
-    addLog(`[Lucky Pick Sync] Saved pick for user ID ${pick.user_id} (${pick.draw_date}) into central SQLite DB.`);
+    addLog(`[Lucky Pick Sync] Saved pick for user ID ${userId} (${pick.draw_date}) into central SQLite DB.`);
     res.json({ status: 'SUCCESS', id: info.lastInsertRowid });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -206,14 +249,32 @@ app.post('/api/picks/sync', (req, res) => {
 
 // 10. Fetch user's Lucky Picks from Central SQLite DB
 app.get('/api/picks', (req, res) => {
-  const { userId } = req.query;
-  let query = 'SELECT * FROM lucky_picks';
+  const { userId, username } = req.query;
+  let query = `
+    SELECT p.*, t.code as lotto_type_code, t.name as lotto_type_name
+    FROM lucky_picks p
+    LEFT JOIN users u ON p.user_id = u.id
+    LEFT JOIN (
+      SELECT 1 as id, 'ULTRA_6_58' as code, 'Ultra Lotto 6/58' as name UNION ALL
+      SELECT 2, 'GRAND_6_55', 'Grand Lotto 6/55' UNION ALL
+      SELECT 3, 'SUPER_6_49', 'Super Lotto 6/49' UNION ALL
+      SELECT 4, 'MEGA_6_45', 'Mega Lotto 6/45' UNION ALL
+      SELECT 5, 'LOTTO_6_42', 'Lotto 6/42'
+    ) t ON p.lotto_type_id = t.id
+    WHERE 1=1
+  `;
   const params = [];
-  if (userId) {
-    query += ' WHERE user_id = ?';
+  if (userId && username) {
+    query += ' AND (p.user_id = ? OR LOWER(u.username) = ?)';
+    params.push(userId, username.toLowerCase());
+  } else if (userId) {
+    query += ' AND p.user_id = ?';
     params.push(userId);
+  } else if (username) {
+    query += ' AND LOWER(u.username) = ?';
+    params.push(username.toLowerCase());
   }
-  query += ' ORDER BY id DESC';
+  query += ' ORDER BY p.id DESC';
   const picks = db.prepare(query).all(...params);
   res.json(picks);
 });
@@ -224,41 +285,57 @@ app.get('/api/sync/history', (req, res) => {
   res.json(history);
 });
 
-// 7. Automated Nightly Sync Cron Job (9:30 PM PHT)
-cron.schedule('30 21 * * *', async () => {
-  addLog('[Nightly Cron] 9:30 PM PHT reached: Running automated PCSO draw synchronization...');
+// 12. Get auto-scrape status and game schedules
+app.get('/api/sync/auto-scrape-config', (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    await executeSync({
-      runType: 'NIGHTLY_CRON',
-      fromDate: today,
-      toDate: today,
-      onLog: addLog,
-    });
-    addLog('[Nightly Cron] Synchronization finished successfully.');
+    const status = getAutoScrapeStatus();
+    res.json(status);
   } catch (err) {
-    addLog(`[Nightly Cron ERROR] ${err.message}`);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Seed initial database cache on launch if empty
+// 13. Update auto-scrape toggle setting
+app.post('/api/sync/auto-scrape-config', (req, res) => {
+  try {
+    const { enabled } = req.body;
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'Expected boolean "enabled" in request body' });
+    }
+    setAutoScrapeEnabled(enabled, addLog);
+    const status = getAutoScrapeStatus();
+    res.json({ status: 'SUCCESS', ...status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 14. Run post-draw auto-scrape immediately on-demand
+app.post('/api/sync/auto-scrape-trigger-now', async (req, res) => {
+  try {
+    addLog('[Admin] Manual trigger initiated for post-draw game-scheduled scraper...');
+    const result = await runAutoScrapeForToday(addLog);
+    res.json({ status: 'SUCCESS', result });
+  } catch (err) {
+    addLog(`[ERROR] Post-draw auto-scrape failed: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Initialize Automated Game-Schedule Post-Draw Scraper
+initAutoScraper(addLog);
+
+// Database cache verification on launch
 const count = db.prepare('SELECT COUNT(*) as total FROM official_lotto_results').get().total;
-if (count === 0) {
-  addLog('[LLIS Sync Server] Initializing 1-year historical cache in SQLite...');
-  executeSync({ runType: 'INITIAL_BOOTSTRAP', onLog: addLog }).then(() => {
-    addLog('[LLIS Sync Server] Initial cache bootstrap complete.');
-  });
-} else {
-  addLog(`[LLIS Sync Server] Central cache ready with ${count} existing verified PCSO draw records.`);
-}
+addLog(`[LLIS Sync Server] Central SQLite ready (${count} records).`);
 
 app.listen(PORT, '0.0.0.0', () => {
   addLog(`================================================================`);
   addLog(`LLIS Official PCSO Background Sync Service running on PORT ${PORT}`);
-  addLog(`REST API URL:   http://localhost:${PORT}/api/pcso-results`);
-  addLog(`Live Logs URL:  http://localhost:${PORT}/api/sync/logs`);
-  addLog(`Health Status:  http://localhost:${PORT}/api/health`);
-  addLog(`Nightly Cron:   Daily at 21:30 (9:30 PM PHT)`);
+  addLog(`REST API URL:          http://localhost:${PORT}/api/pcso-results`);
+  addLog(`Live Logs URL:         http://localhost:${PORT}/api/sync/logs`);
+  addLog(`Auto-Scrape Config:    http://localhost:${PORT}/api/sync/auto-scrape-config`);
+  addLog(`Health Status:         http://localhost:${PORT}/api/health`);
   addLog(`================================================================`);
 });
 

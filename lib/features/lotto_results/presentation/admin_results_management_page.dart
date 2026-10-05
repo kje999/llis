@@ -7,6 +7,7 @@ import 'package:my_lucky_lotto_pred/shared/models/lotto_type.dart';
 import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
 import 'package:my_lucky_lotto_pred/shared/widgets/lotto_ball.dart';
 import 'package:my_lucky_lotto_pred/features/lucky_pick/domain/lucky_pick_service.dart';
+import 'package:my_lucky_lotto_pred/features/synchronization/domain/synchronization_service.dart';
 
 class AdminResultsManagementPage extends StatefulWidget {
   const AdminResultsManagementPage({super.key});
@@ -32,12 +33,18 @@ class _AdminResultsManagementPageState extends State<AdminResultsManagementPage>
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool forceSync = false}) async {
     final typeRepo = context.read<LottoTypeRepository>();
     final resultRepo = context.read<LottoResultRepository>();
+    final syncService = context.read<SynchronizationService>();
+
+    var total = await resultRepo.getTotalCount();
+    if (total == 0 || forceSync) {
+      await syncService.loadCachedResultsFromBackend();
+      total = await resultRepo.getTotalCount();
+    }
 
     final types = await typeRepo.getAll();
-    final total = await resultRepo.getTotalCount();
     final offset = (_currentPage - 1) * _pageSize;
 
     // Ordered by draw_date DESC (recent/latest top)
@@ -218,145 +225,223 @@ class _AdminResultsManagementPageState extends State<AdminResultsManagementPage>
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 650;
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
                 children: [
-                  Text(
-                    'Official PCSO Draw Results Directory',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-                  ),
-                  SizedBox(height: 4),
-                  Text('View, manually insert, edit, or delete official draw results.', style: TextStyle(fontSize: 13, color: Colors.blueGrey)),
-                ],
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Manual Draw Result'),
-                onPressed: _showAddResultDialog,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          // Results Info Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Showing ${((_currentPage - 1) * _pageSize) + 1}–${(((_currentPage - 1) * _pageSize) + _results.length).clamp(0, _totalRecords)} of $_totalRecords draw results (Latest first)',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF1E3A8A)),
-                ),
-                Text(
-                  'Page $_currentPage of $_totalPages',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator())
-          else ...[
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _results.length,
-              itemBuilder: (context, index) {
-                final r = _results[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: constraints.maxWidth > 650 ? constraints.maxWidth - 320 : constraints.maxWidth),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(r.lottoTypeName ?? 'PCSO Lotto', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                            Text('Draw: ${r.drawDate} | Jackpot: ${r.formattedJackpot} | Winners: ${r.winners}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                          ],
+                        Text(
+                          'Official PCSO Draw Results Directory',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
                         ),
-                        Wrap(
-                          spacing: 4,
-                          children: r.numbers.map((n) => LottoBall(number: n, size: 30)).toList(),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
-                          tooltip: 'Delete Draw',
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (c) => AlertDialog(
-                                title: const Text('Confirm Deletion'),
-                                content: const Text('Are you sure you want to delete this draw result?'),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-                                  TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
-                                ],
-                              ),
-                            );
-                            if (confirm == true) {
-                              await context.read<LottoResultRepository>().delete(r.id);
-                              _loadData();
-                            }
-                          },
-                        ),
+                        SizedBox(height: 4),
+                        Text('View, manually insert, edit, or delete official draw results.', style: TextStyle(fontSize: 13, color: Colors.blueGrey)),
                       ],
                     ),
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            // Pagination Controls
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.arrow_back, size: 16),
-                    label: const Text('Previous 20'),
-                    onPressed: _currentPage > 1 ? () => _onPageChanged(_currentPage - 1) : null,
-                  ),
-                  Text(
-                    'Page $_currentPage of $_totalPages (20 items/page)',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A)),
-                  ),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
-                    icon: const Icon(Icons.arrow_forward, size: 16),
-                    label: const Text('Next 20'),
-                    onPressed: _currentPage < _totalPages ? () => _onPageChanged(_currentPage + 1) : null,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF1E3A8A)),
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Refresh'),
+                        onPressed: () {
+                          setState(() => _isLoading = true);
+                          _loadData(forceSync: true);
+                        },
+                      ),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Manual Draw Result'),
+                        onPressed: _showAddResultDialog,
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 14),
+              // Results Info Bar
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 6,
+                  children: [
+                    Text(
+                      'Showing ${((_currentPage - 1) * _pageSize) + 1}–${(((_currentPage - 1) * _pageSize) + _results.length).clamp(0, _totalRecords)} of $_totalRecords draw results (Latest first)',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF1E3A8A)),
+                    ),
+                    Text(
+                      'Page $_currentPage of $_totalPages',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (_isLoading)
+                const Center(child: CircularProgressIndicator())
+              else ...[
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _results.length,
+                  itemBuilder: (context, index) {
+                    final r = _results[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: isMobile
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          r.lottoTypeName ?? 'PCSO Lotto',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E3A8A)),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                        tooltip: 'Delete Draw',
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        onPressed: () => _confirmDelete(r),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 4,
+                                    runSpacing: 4,
+                                    children: r.numbers.map((n) => LottoBall(number: n, size: 28)).toList(),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 4,
+                                    children: [
+                                      Text('Draw: ${r.drawDate}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
+                                      Text('Jackpot: ${r.formattedJackpot}', style: const TextStyle(fontSize: 12, color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold)),
+                                      Text('Winners: ${r.winners}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(r.lottoTypeName ?? 'PCSO Lotto', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                        Text('Draw: ${r.drawDate} | Jackpot: ${r.formattedJackpot} | Winners: ${r.winners}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Wrap(
+                                    spacing: 4,
+                                    children: r.numbers.map((n) => LottoBall(number: n, size: 30)).toList(),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                    tooltip: 'Delete Draw',
+                                    onPressed: () => _confirmDelete(r),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Pagination Controls
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 10,
+                    children: [
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.arrow_back, size: 16),
+                        label: const Text('Previous 20'),
+                        onPressed: _currentPage > 1 ? () => _onPageChanged(_currentPage - 1) : null,
+                      ),
+                      Text(
+                        'Page $_currentPage of $_totalPages',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A)),
+                      ),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+                        icon: const Icon(Icons.arrow_forward, size: 16),
+                        label: const Text('Next 20'),
+                        onPressed: _currentPage < _totalPages ? () => _onPageChanged(_currentPage + 1) : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDelete(LottoResult r) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Confirm Deletion'),
+        content: const Text('Are you sure you want to delete this draw result?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
+    if (confirm == true) {
+      await context.read<LottoResultRepository>().delete(r.id);
+      _loadData();
+    }
   }
 }

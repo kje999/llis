@@ -25,16 +25,26 @@ class User {
   bool get isClient => role == 'CLIENT';
 
   factory User.fromMap(Map<String, dynamic> map) {
+    final rawIsActive = map['is_active'];
+    final bool active = rawIsActive == 1 || rawIsActive == true || rawIsActive == '1';
+
+    DateTime parseDate(dynamic val) {
+      if (val is String && val.isNotEmpty) {
+        return DateTime.tryParse(val) ?? DateTime.now();
+      }
+      return DateTime.now();
+    }
+
     return User(
-      id: map['id'] as int,
-      username: map['username'] as String,
-      passwordHash: map['password_hash'] as String,
-      role: map['role'] as String,
-      fullName: map['full_name'] as String,
-      email: map['email'] as String,
-      createdAt: DateTime.parse(map['created_at'] as String),
-      updatedAt: DateTime.parse(map['updated_at'] as String),
-      isActive: (map['is_active'] as int) == 1,
+      id: (map['id'] as num?)?.toInt() ?? 0,
+      username: (map['username'] ?? '').toString(),
+      passwordHash: (map['password_hash'] ?? '').toString(),
+      role: (map['role'] ?? 'CLIENT').toString(),
+      fullName: (map['full_name'] ?? map['username'] ?? '').toString(),
+      email: (map['email'] ?? '').toString(),
+      createdAt: parseDate(map['created_at']),
+      updatedAt: parseDate(map['updated_at']),
+      isActive: active,
     );
   }
 
