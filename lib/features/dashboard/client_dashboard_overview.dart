@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:my_lucky_lotto_pred/core/theme/app_theme.dart';
 import 'package:my_lucky_lotto_pred/features/authentication/domain/auth_service.dart';
 import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_result_repository.dart';
+import 'package:my_lucky_lotto_pred/features/lotto_results/domain/lotto_type_repository.dart';
 import 'package:my_lucky_lotto_pred/shared/models/lotto_result.dart';
 import 'package:my_lucky_lotto_pred/shared/widgets/lotto_ball.dart';
 import 'package:my_lucky_lotto_pred/shared/widgets/lotto_disclaimer_banner.dart';
@@ -21,6 +22,8 @@ class ClientDashboardOverview extends StatefulWidget {
 
 class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
   List<LottoResult> _latestResults = [];
+  Map<int, LottoResult> _latestResultsById = {};
+  Map<String, LottoResult> _latestResultsByCode = {};
   bool _isLoading = true;
 
   @override
@@ -34,6 +37,7 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
     final syncService = context.read<SynchronizationService>();
     final auth = context.read<AuthService>();
     final pickRepo = context.read<LuckyPickRepository>();
+    final typeRepo = context.read<LottoTypeRepository>();
 
     if (auth.currentUser != null) {
       await pickRepo.syncPicksFromBackend(
@@ -48,12 +52,52 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
       results = await resultRepo.getAll(limit: 6);
     }
 
+    // Load recent official PCSO draw results for all 5 lotto game types
+    final types = await typeRepo.getAll();
+    final Map<int, LottoResult> latestById = {};
+    final Map<String, LottoResult> latestByCode = {};
+
+    for (final type in types) {
+      var latest = await resultRepo.getLatestByTypeId(type.id);
+      if (latest == null && results.isEmpty) {
+        await syncService.loadCachedResultsFromBackend();
+        latest = await resultRepo.getLatestByTypeId(type.id);
+      }
+      if (latest != null) {
+        latestById[type.id] = latest;
+        latestByCode[type.code] = latest;
+      }
+    }
+
     if (mounted) {
       setState(() {
         _latestResults = results;
+        _latestResultsById = latestById;
+        _latestResultsByCode = latestByCode;
         _isLoading = false;
       });
     }
+  }
+
+  String _formatDynamicJackpot(double? prize, String fallback) {
+    if (prize == null || prize <= 0) return fallback;
+    if (prize >= 1000000000) {
+      final b = prize / 1000000000;
+      return '₱${b.toStringAsFixed(b >= 10 ? 1 : 2)}B';
+    } else if (prize >= 1000000) {
+      final m = prize / 1000000;
+      return '₱${m.toStringAsFixed(1)}M';
+    } else if (prize >= 1000) {
+      final k = prize / 1000;
+      return '₱${k.toStringAsFixed(0)}K';
+    }
+    return NumberFormat.currency(locale: 'en_PH', symbol: '₱', decimalDigits: 0).format(prize);
+  }
+
+  String _buildTooltip(String gameName, LottoResult? result, String fallback) {
+    if (result == null) return '$gameName\nMinimum Starting Jackpot: $fallback\nNo draw records yet';
+    final winnerText = result.winners > 0 ? result.formattedWinners : 'No Jackpot Winner Yet';
+    return '$gameName\nRecent Official Draw: ${result.drawDate}\nJackpot: ${result.formattedJackpot}\n$winnerText\nTap to view draw history';
   }
 
   @override
@@ -62,13 +106,16 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
     final user = auth.currentUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. PCSO Hero Interactive Welcome Card
-          _buildHeroBanner(user?.fullName ?? user?.username ?? 'Player', isDark),
+    return RefreshIndicator(
+      onRefresh: _loadOverviewData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. PCSO Hero Interactive Welcome Card
+            _buildHeroBanner(user?.fullName ?? user?.username ?? 'Player', isDark),
           const SizedBox(height: 16),
 
           // 2. Official Disclaimer
@@ -87,8 +134,9 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
           _buildRecentDrawsSection(isDark),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildHeroBanner(String userName, bool isDark) {
     return Container(
@@ -268,6 +316,12 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
   }
 
   Widget _buildDrawScheduleSection(bool isDark) {
+    final ultraLatest = _latestResultsByCode['ULTRA_6_58'] ?? _latestResultsById[1];
+    final grandLatest = _latestResultsByCode['GRAND_6_55'] ?? _latestResultsById[2];
+    final superLatest = _latestResultsByCode['SUPER_6_49'] ?? _latestResultsById[3];
+    final megaLatest = _latestResultsByCode['MEGA_6_45'] ?? _latestResultsById[4];
+    final lottoLatest = _latestResultsByCode['LOTTO_6_42'] ?? _latestResultsById[5];
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -307,7 +361,7 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                     Text(
-                      'Daily live draw schedules for all 6-number lotto categories',
+                      'Daily live draw schedules & recent official PCSO jackpot prizes',
                       style: TextStyle(fontSize: 11, color: Colors.blueGrey),
                     ),
                   ],
@@ -320,11 +374,51 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildGameScheduleChip('Ultra 6/58', 'Sun • Tue • Fri', '₱49.5M+', AppTheme.ultraColor, isDark),
-              _buildGameScheduleChip('Grand 6/55', 'Mon • Wed • Sat', '₱29.7M+', AppTheme.grandColor, isDark),
-              _buildGameScheduleChip('Super 6/49', 'Sun • Tue • Thu', '₱15.8M+', AppTheme.superColor, isDark),
-              _buildGameScheduleChip('Mega 6/45', 'Mon • Wed • Fri', '₱8.9M+', AppTheme.megaColor, isDark),
-              _buildGameScheduleChip('Lotto 6/42', 'Tue • Thu • Sat', '₱5.9M+', AppTheme.lottoColor, isDark),
+              _buildGameScheduleChip(
+                title: 'Ultra 6/58',
+                days: 'Sun • Tue • Fri',
+                jackpotText: _formatDynamicJackpot(ultraLatest?.jackpotPrize, '₱49.5M+'),
+                accentColor: AppTheme.ultraColor,
+                isDark: isDark,
+                tooltip: _buildTooltip('Ultra Lotto 6/58', ultraLatest, '₱49.5M+'),
+                onTap: () => widget.onNavigateTab(2),
+              ),
+              _buildGameScheduleChip(
+                title: 'Grand 6/55',
+                days: 'Mon • Wed • Sat',
+                jackpotText: _formatDynamicJackpot(grandLatest?.jackpotPrize, '₱29.7M+'),
+                accentColor: AppTheme.grandColor,
+                isDark: isDark,
+                tooltip: _buildTooltip('Grand Lotto 6/55', grandLatest, '₱29.7M+'),
+                onTap: () => widget.onNavigateTab(2),
+              ),
+              _buildGameScheduleChip(
+                title: 'Super 6/49',
+                days: 'Sun • Tue • Thu',
+                jackpotText: _formatDynamicJackpot(superLatest?.jackpotPrize, '₱15.8M+'),
+                accentColor: AppTheme.superColor,
+                isDark: isDark,
+                tooltip: _buildTooltip('Super Lotto 6/49', superLatest, '₱15.8M+'),
+                onTap: () => widget.onNavigateTab(2),
+              ),
+              _buildGameScheduleChip(
+                title: 'Mega 6/45',
+                days: 'Mon • Wed • Fri',
+                jackpotText: _formatDynamicJackpot(megaLatest?.jackpotPrize, '₱8.9M+'),
+                accentColor: AppTheme.megaColor,
+                isDark: isDark,
+                tooltip: _buildTooltip('Mega Lotto 6/45', megaLatest, '₱8.9M+'),
+                onTap: () => widget.onNavigateTab(2),
+              ),
+              _buildGameScheduleChip(
+                title: 'Lotto 6/42',
+                days: 'Tue • Thu • Sat',
+                jackpotText: _formatDynamicJackpot(lottoLatest?.jackpotPrize, '₱5.9M+'),
+                accentColor: AppTheme.lottoColor,
+                isDark: isDark,
+                tooltip: _buildTooltip('Lotto 6/42', lottoLatest, '₱5.9M+'),
+                onTap: () => widget.onNavigateTab(2),
+              ),
             ],
           ),
         ],
@@ -332,14 +426,16 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
     );
   }
 
-  Widget _buildGameScheduleChip(
-    String title,
-    String days,
-    String minJackpot,
-    Color accentColor,
-    bool isDark,
-  ) {
-    return Container(
+  Widget _buildGameScheduleChip({
+    required String title,
+    required String days,
+    required String jackpotText,
+    required Color accentColor,
+    required bool isDark,
+    String? tooltip,
+    VoidCallback? onTap,
+  }) {
+    final chipContent = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
@@ -374,7 +470,7 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  minJackpot,
+                  jackpotText,
                   style: const TextStyle(
                     color: Color(0xFF0F172A),
                     fontSize: 9,
@@ -394,6 +490,18 @@ class _ClientDashboardOverviewState extends State<ClientDashboardOverview> {
             ),
           ),
         ],
+      ),
+    );
+
+    return Tooltip(
+      message: tooltip ?? '$title Jackpot: $jackpotText',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: chipContent,
+        ),
       ),
     );
   }
