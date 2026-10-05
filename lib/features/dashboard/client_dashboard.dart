@@ -11,6 +11,7 @@ import 'package:my_lucky_lotto_pred/features/lotto_results/presentation/lotto_re
 import 'package:my_lucky_lotto_pred/features/analytics/presentation/analytics_page.dart';
 import 'package:my_lucky_lotto_pred/features/predictions/presentation/predictions_page.dart';
 import 'package:my_lucky_lotto_pred/features/notifications/presentation/notifications_page.dart';
+import 'package:my_lucky_lotto_pred/shared/widgets/developer_info_dialog.dart';
 
 class ClientDashboard extends StatefulWidget {
   const ClientDashboard({super.key});
@@ -171,6 +172,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
               }
             },
           ),
+          const DeveloperInfoButton(compact: true),
           const SizedBox(width: 6),
         ],
       ),

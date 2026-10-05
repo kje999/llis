@@ -47,6 +47,7 @@ app.*.map.json
 # Node.js backend
 node_modules/
 backend_sync_service/node_modules/
+*.db
 *.db-shm
 *.db-wal
 mobile_screenshots/

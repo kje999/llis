@@ -9,6 +9,7 @@ import 'package:my_lucky_lotto_pred/features/lotto_results/presentation/admin_re
 import 'package:my_lucky_lotto_pred/features/users/presentation/admin_users_page.dart';
 import 'package:my_lucky_lotto_pred/features/settings/presentation/admin_settings_page.dart';
 import 'package:my_lucky_lotto_pred/features/migration/presentation/migration_page.dart';
+import 'package:my_lucky_lotto_pred/shared/widgets/developer_info_dialog.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -127,6 +128,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               if (val == 'logout') auth.logout();
             },
           ),
+          const DeveloperInfoButton(compact: true),
           const SizedBox(width: 6),
         ],
       ),

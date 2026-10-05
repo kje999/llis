@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:my_lucky_lotto_pred/core/theme/app_theme.dart';
 import 'package:my_lucky_lotto_pred/features/authentication/domain/auth_service.dart';
+import 'package:my_lucky_lotto_pred/shared/widgets/developer_info_dialog.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback onNavigateToRegister;
@@ -272,6 +273,8 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 8),
+                const DeveloperInfoButton(),
               ],
             ),
           ),
