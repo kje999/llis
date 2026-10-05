@@ -29,7 +29,54 @@ The system strictly supports the **five official PCSO 6-number lotto games**:
 
 ---
 
-## 2. Official PCSO Draw Schedule & Automated Post-Draw Scraper
+## 2. 🎟️ Player Guide & How It Works (Client Manual)
+
+A quick, friendly walkthrough of all features available to players:
+
+### 1. 🚀 Getting Started & Logging In
+- **Web App URL:** [https://kje999.github.io/llis/](https://kje999.github.io/llis/)
+- **Registration:** Tap **Register** on the login page to create your personal account (Full Name, Username, Email, Password).
+- **Persistent Sessions:** Once signed in, your session stays active across page reloads and browser refreshes.
+
+### 2. 🏠 Dashboard (Your Home Base)
+- **Live 9:00 PM Draw Schedules & Dynamic Jackpots:** View active draw days and real-time jackpot prizes for all 5 games (Ultra 6/58, Grand 6/55, Super 6/49, Mega 6/45, Lotto 6/42) synced directly from official PCSO draw results. Hover or tap each chip for draw dates, exact amounts, and winner stats.
+- **Recent Official Draws Stream:** Clean list of the latest 6 official winning combinations, draw dates, prizes, and winner counts.
+- **Pull-to-Refresh:** Pull down or click refresh to load the freshest numbers instantly.
+
+### 3. 🎲 Lucky Pick Generator (Generate Your Numbers)
+- **Game Selection:** Choose any of the 5 official lotto games.
+- **Pick Modes:**
+  - **Quick Random:** Fast standard random shuffle.
+  - **Hot Numbers:** Prioritizes numbers drawn most frequently in historical draws.
+  - **Cold / Overdue:** Selects numbers that haven't appeared for a while.
+  - **Balanced Mix:** Perfectly balances odd/even and high/low distribution.
+- **Save Pick:** Click **Save Pick** to store your lucky combination directly into your personal ticket wallet.
+
+### 4. 📊 Results (Official PCSO Draw History & Search)
+- Browse all historical winning draws.
+- Filter by game category or date range (Today, Last 7 Days, Last 30 Days, Year-to-Date, All Time).
+- **Number Search:** Enter your favorite numbers to check if that exact combination ever won in past history!
+
+### 5. 📈 Analytics (Deep Statistical Insights)
+- **Ball Frequency Heatmaps:** Visual bars showing how many times every number (1 to 58) has been drawn over the past year.
+- **Hot vs. Cold Rankings:** Instant identification of the hottest and coldest balls.
+- **Odd / Even & Sum Spread:** Breakdown of odd/even ratios and sum distributions.
+
+### 6. ✨ Suggestions (AI & Statistical Predictions)
+- Ranked combination recommendations calculated from mathematical probability models and historical frequency.
+- Includes transparent reasoning for every pick (e.g., *"Balanced 3-odd/3-even mix with high-frequency anchors"*).
+- One-click button to save any recommended combination to "My Picks".
+
+### 7. 🔖 My Picks & Automated Win Checker
+- View all your saved tickets and their target draw dates.
+- **Automatic Win Checking:** The app automatically compares your saved numbers against newly published official PCSO results, highlights matching balls in green, and displays your prize tier (Jackpot, 2nd, 3rd, or 4th Prize) and estimated winnings!
+
+### 8. 🔔 Alerts & Notifications
+- Automatic in-app notification alerts whenever official 9:00 PM draw results are published and whenever your saved tickets win.
+
+---
+
+## 3. Official PCSO Draw Schedule & Automated Post-Draw Scraper
 All official PCSO 6-number lotto draws occur at **9:00 PM PHT** (Philippine Standard Time, UTC+8).  
 LLIS includes an intelligent automated post-draw scraper that triggers specifically according to the active game schedule of the day:
 

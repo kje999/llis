@@ -77,8 +77,11 @@ class _LoginPageState extends State<LoginPage> {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 440),
-                child: Card(
-                  elevation: 8,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Card(
+                      elevation: 8,
                   shadowColor: Colors.black.withValues(alpha: 0.3),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                   child: Padding(
@@ -230,12 +233,181 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ],
                           ),
+                          const Divider(height: 20, thickness: 0.8),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF1E3A8A),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            ),
+                            onPressed: () => _showQuickGuideDialog(context),
+                            icon: const Icon(Icons.help_outline_rounded, size: 16, color: Color(0xFF1E3A8A)),
+                            label: const Text(
+                              'How It Works & Features Guide',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
                 ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: AppTheme.pcsoGold, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Track live 9:00 PM PCSO draw schedules & jackpots, generate lucky picks, and auto-check tickets.',
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+        ],
+      ),
+    );
+  }
+
+  void _showQuickGuideDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: AppTheme.pcsoGoldGradient,
+                borderRadius: BorderRadius.circular(10),
               ),
+              child: const Icon(Icons.casino, size: 20, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'How It Works & Quick Guide',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildGuideItem(
+                  icon: Icons.access_time_filled,
+                  iconColor: const Color(0xFFF59E0B),
+                  title: 'Live 9:00 PM Draw Schedules & Jackpots',
+                  desc: 'Track daily schedules for Ultra 6/58, Grand 6/55, Super 6/49, Mega 6/45, and Lotto 6/42 with real-time dynamic jackpot prizes.',
+                ),
+                _buildGuideItem(
+                  icon: Icons.casino,
+                  iconColor: const Color(0xFF3B82F6),
+                  title: 'Lucky Pick Generator',
+                  desc: 'Generate numbers via Quick Random, Hot/Frequent, Cold/Overdue, or Balanced odd/even mix with fun rolling animations.',
+                ),
+                _buildGuideItem(
+                  icon: Icons.format_list_numbered,
+                  iconColor: const Color(0xFF10B981),
+                  title: 'Official Results & Historical Search',
+                  desc: 'Browse complete historical PCSO winning draws and search past winning combinations.',
+                ),
+                _buildGuideItem(
+                  icon: Icons.insights,
+                  iconColor: const Color(0xFF8B5CF6),
+                  title: 'Deep Analytics & AI Suggestions',
+                  desc: 'Inspect 1-year number frequency heatmaps and receive explainable statistical combination suggestions.',
+                ),
+                _buildGuideItem(
+                  icon: Icons.bookmark_added,
+                  iconColor: const Color(0xFFEC4899),
+                  title: 'My Picks & Automated Win Checker',
+                  desc: 'Save your combinations to your ticket wallet. LLIS automatically matches them against official results and highlights winning prize tiers!',
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.amber.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: Colors.amber.shade900),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Strictly for entertainment and statistical simulation only. Lottery draws are random.',
+                          style: TextStyle(fontSize: 10.5, color: Colors.amber.shade900, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideItem({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String desc,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: iconColor),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 2),
+                Text(desc, style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700, height: 1.3)),
+              ],
             ),
           ),
         ],
