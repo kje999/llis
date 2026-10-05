@@ -26,7 +26,7 @@ class ApiConstants {
       final host = Uri.base.host;
       if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1' && host != '0.0.0.0') {
         // When hosted on GitHub Pages or custom domain, default to Render cloud deployment
-        return 'https://llis-backend.onrender.com';
+        return 'https://llis.onrender.com';
       }
     }
 

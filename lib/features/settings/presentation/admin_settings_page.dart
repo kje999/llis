@@ -143,7 +143,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                           controller: _backendUrlController,
                           decoration: InputDecoration(
                             labelText: 'Backend Service Base URL',
-                            hintText: 'https://llis-backend.onrender.com or http://localhost:8081',
+                            hintText: 'https://llis.onrender.com or http://localhost:8081',
                             border: const OutlineInputBorder(),
                             helperText: 'Active: ${ApiConstants.baseUrl}',
                           ),
